@@ -1,0 +1,64 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: deg_ehjizli_app
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html:delegated
+      - deg_ehjizli_vendor:/var/www/html/vendor
+      - deg_ehjizli_storage:/var/www/html/storage
+      - deg_ehjizli_bootstrap_cache:/var/www/html/bootstrap/cache
+    ports:
+      - "8001:80"
+    depends_on:
+      - db
+    environment:
+      APP_ENV: local
+      APACHE_DOCUMENT_ROOT: /var/www/html/public
+
+  db:
+    image: mysql:8.0
+    container_name: deg_ehjizli_db
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: deg_ehjizli
+      MYSQL_USER: deg_ehjizli
+      MYSQL_PASSWORD: deg_ehjizli
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3308:3306"
+    volumes:
+      - deg_ehjizli_db_data:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: deg_ehjizli_phpmyadmin
+    depends_on:
+      - db
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8082:80"
+
+  node:
+    image: node:20-alpine
+    container_name: deg_ehjizli_node
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html:delegated
+      - deg_ehjizli_node_modules:/var/www/html/node_modules
+    ports:
+      - "5174:5173"
+    command: sh -lc "if [ ! -d node_modules ] || [ -z \"$(ls -A node_modules 2>/dev/null)\" ]; then npm install; fi && npm run dev -- --host 0.0.0.0 --port 5173"
+
+volumes:
+  deg_ehjizli_db_data:
+  deg_ehjizli_vendor:
+  deg_ehjizli_storage:
+  deg_ehjizli_bootstrap_cache:
+  deg_ehjizli_node_modules:
