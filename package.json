@@ -6,8 +6,15 @@
         "build": "vite build",
         "dev": "vite"
     },
+    "dependencies": {
+        "@inertiajs/vue3": "^2.0.0",
+        "shadcn-vue": "^2.0.0",
+        "vue": "^3.5.0",
+        "ziggy-js": "^2.5.0"
+    },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
+        "@vitejs/plugin-vue": "^6.0.6",
         "axios": ">=1.11.0 <=1.14.0",
         "concurrently": "^9.0.1",
         "laravel-vite-plugin": "^3.0.0",

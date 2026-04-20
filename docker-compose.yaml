@@ -45,6 +45,54 @@ services:
     ports:
       - "8082:80"
 
+  redis:
+    image: redis:7-alpine
+    container_name: deg_ehjizli_redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - deg_ehjizli_redis_data:/data
+
+  horizon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: deg_ehjizli_horizon
+    restart: unless-stopped
+    command: php artisan horizon
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html:delegated
+      - deg_ehjizli_vendor:/var/www/html/vendor
+      - deg_ehjizli_storage:/var/www/html/storage
+      - deg_ehjizli_bootstrap_cache:/var/www/html/bootstrap/cache
+    depends_on:
+      - app
+      - redis
+      - db
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: deg_ehjizli_scheduler
+    restart: unless-stopped
+    command: >
+      sh -c "while true; do
+        php artisan schedule:run --verbose --no-interaction &
+        sleep 60
+      done"
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html:delegated
+      - deg_ehjizli_vendor:/var/www/html/vendor
+      - deg_ehjizli_storage:/var/www/html/storage
+      - deg_ehjizli_bootstrap_cache:/var/www/html/bootstrap/cache
+    depends_on:
+      - app
+      - redis
+      - db
+
   node:
     image: node:20-alpine
     container_name: deg_ehjizli_node
@@ -58,6 +106,7 @@ services:
 
 volumes:
   deg_ehjizli_db_data:
+  deg_ehjizli_redis_data:
   deg_ehjizli_vendor:
   deg_ehjizli_storage:
   deg_ehjizli_bootstrap_cache:
