@@ -21,7 +21,7 @@ class FirebaseAuthService
     ) {}
 
     /**
-     * @return array{uid: string, email: ?string, phone: ?string, name: ?string}
+     * @return array{uid: string, email: ?string, phone: ?string, name: ?string, picture: ?string}
      *
      * @throws RuntimeException when token is invalid or expired
      */
@@ -77,6 +77,7 @@ class FirebaseAuthService
             'email' => $payload['email'] ?? null,
             'phone' => $payload['phone_number'] ?? null,
             'name' => $payload['name'] ?? null,
+            'picture' => $payload['picture'] ?? null,
         ];
     }
 

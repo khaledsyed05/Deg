@@ -2,135 +2,195 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exceptions\Moderation\ModerationException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Venue\GetAvailableSlotsRequest;
 use App\Http\Requests\Api\V1\Venue\ListVenuesRequest;
+use App\Http\Requests\Api\V1\Venue\NearbyVenuesRequest;
+use App\Http\Requests\Api\V1\Venue\ReportVenueRequest;
 use App\Http\Requests\Api\V1\Venue\SearchVenuesRequest;
+use App\Http\Resources\V1\Venue\VenueDetailResource;
 use App\Http\Resources\VenueResource;
+use App\Http\Traits\ApiResponse;
 use App\Models\Venue;
 use App\Repositories\Contracts\VenueRepositoryInterface;
 use App\Services\Booking\SlotAvailabilityService;
+use App\Services\Moderation\VenueReportService;
+use App\Services\Venue\VenueExtrasService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class VenueController extends Controller
 {
+    use ApiResponse;
+
+    private const EAGER_LIST = ['category', 'club.city', 'media'];
+
     public function __construct(
         private VenueRepositoryInterface $venueRepo,
         private SlotAvailabilityService $slotAvailabilityService,
     ) {}
 
-    /**
-     * List venues
-     *
-     * Returns a paginated list of active venues. Filterable by city and category.
-     *
-     * @unauthenticated
-     *
-     * @queryParam city_id integer Filter by city ID. Example: 1
-     * @queryParam category_id integer Filter by sport category ID. Example: 2
-     * @queryParam per_page integer Results per page (default: 15, max: 100). Example: 20
-     *
-     * @response 200 {"success": true, "data": [...], "meta": {"current_page": 1, "last_page": 3, "per_page": 15, "total": 42}}
-     */
-    public function index(ListVenuesRequest $request): JsonResponse
+    public function index(ListVenuesRequest $request): AnonymousResourceCollection
     {
-        $query = $this->venueRepo->query()->active()->with(['club']);
+        $query = $this->baseListQuery();
 
-        if ($request->city_id) {
-            $query->where('city_id', $request->city_id);
+        if ($request->integer('city_id')) {
+            $query->inCity($request->integer('city_id'));
         }
 
-        if ($request->category_id) {
-            $query->where('category_id', $request->category_id);
+        if ($request->integer('category_id')) {
+            $query->withCategory($request->integer('category_id'));
         }
 
-        $venues = $query->orderByDesc('id')->paginate($request->per_page ?? 15);
+        if ($request->has('min_price') || $request->has('max_price')) {
+            $query->priceRange($request->integer('min_price') ?: null, $request->integer('max_price') ?: null);
+        }
 
-        return response()->json([
-            'success' => true,
-            'data' => VenueResource::collection($venues),
-            'meta' => [
-                'current_page' => $venues->currentPage(),
-                'last_page' => $venues->lastPage(),
-                'per_page' => $venues->perPage(),
-                'total' => $venues->total(),
-            ],
-        ]);
+        if ($request->boolean('is_featured')) {
+            $query->featured();
+        }
+
+        $this->applySort($query, $request->input('sort_by'));
+
+        return VenueResource::collection(
+            $query->paginate($request->integer('per_page') ?: 15),
+        );
     }
 
-    /**
-     * Get venue details
-     *
-     * Returns full details for a single venue including club information.
-     *
-     * @unauthenticated
-     *
-     * @response 200 {"success": true, "data": {"id": 1, "name": {"ar": "ملعب النور", "en": "Al-Nour Field"}}}
-     * @response 404 {"message": "Not Found"}
-     */
+    public function search(SearchVenuesRequest $request): AnonymousResourceCollection
+    {
+        $query = $this->baseListQuery()->searchTranslated((string) $request->input('query'));
+
+        if ($request->integer('city_id')) {
+            $query->inCity($request->integer('city_id'));
+        }
+
+        if ($request->integer('category_id')) {
+            $query->withCategory($request->integer('category_id'));
+        }
+
+        return VenueResource::collection(
+            $query->paginate($request->integer('per_page') ?: 15),
+        );
+    }
+
+    public function nearby(NearbyVenuesRequest $request): AnonymousResourceCollection
+    {
+        $query = $this->baseListQuery()->nearby(
+            (float) $request->input('latitude'),
+            (float) $request->input('longitude'),
+            (float) ($request->integer('radius_km') ?: 10),
+        );
+
+        if ($request->integer('category_id')) {
+            $query->withCategory($request->integer('category_id'));
+        }
+
+        return VenueResource::collection(
+            $query->paginate($request->integer('per_page') ?: 15),
+        );
+    }
+
+    public function featured(): AnonymousResourceCollection
+    {
+        $venues = $this->baseListQuery()
+            ->featured()
+            ->orderByDesc('view_count')
+            ->limit(10)
+            ->get();
+
+        return VenueResource::collection($venues);
+    }
+
+    public function popular(Request $request, VenueExtrasService $service): JsonResponse
+    {
+        $cityId = $request->integer('city_id') ?: null;
+        $limit = min(50, max(1, $request->integer('limit', 20)));
+
+        return $this->success($service->getPopularVenues($cityId, $limit));
+    }
+
+    public function recentlyViewed(Request $request, VenueExtrasService $service): JsonResponse
+    {
+        $limit = min(50, max(1, $request->integer('limit', 20)));
+
+        return $this->success($service->getRecentlyViewed($request->user(), $limit));
+    }
+
+    public function similar(string $slug, Request $request, VenueExtrasService $service): JsonResponse
+    {
+        $limit = min(20, max(1, $request->integer('limit', 10)));
+
+        return $this->success($service->getSimilarVenues($slug, $limit));
+    }
+
+    public function photos(string $slug, VenueExtrasService $service): JsonResponse
+    {
+        return $this->success($service->getVenuePhotos($slug));
+    }
+
     public function show(Venue $venue): JsonResponse
     {
+        $venue->load(['category', 'club.city', 'media']);
+        $venue->recordView(request()->user(), request()->ip());
+
         return response()->json([
             'success' => true,
-            'data' => new VenueResource($venue->load(['club'])),
+            'data' => new VenueDetailResource($venue),
         ]);
     }
 
-    /**
-     * Search venues
-     *
-     * Full-text search across venue names (Arabic and English).
-     *
-     * @unauthenticated
-     *
-     * @queryParam query string required Search term. Example: ملعب
-     * @queryParam city_id integer Filter results by city. Example: 1
-     * @queryParam per_page integer Results per page. Example: 15
-     *
-     * @response 200 {"success": true, "data": [...], "meta": {"total": 5}}
-     */
-    public function search(SearchVenuesRequest $request): JsonResponse
+    public function availability(Venue $venue): JsonResponse
     {
-        $searchQuery = $request->input('query');
-        $query = $this->venueRepo->query()
-            ->active()
-            ->where(function ($q) use ($searchQuery) {
-                $q->whereRaw("JSON_EXTRACT(name, '$.ar') LIKE ?", ["%{$searchQuery}%"])
-                    ->orWhereRaw("JSON_EXTRACT(name, '$.en') LIKE ?", ["%{$searchQuery}%"]);
-            })
-            ->with(['club']);
+        $venue->load('club');
+        $settings = $venue->club?->settings ?? [];
 
-        if ($request->city_id) {
-            $query->where('city_id', $request->city_id);
+        return $this->success([
+            'venue_id' => $venue->id,
+            'slug' => $venue->slug,
+            'opening_hours' => $venue->opening_hours ?? [],
+            'business_hours' => $settings['business_hours'] ?? null,
+            'booking_rules' => $settings['booking_rules'] ?? null,
+        ]);
+    }
+
+    public function reviews(Venue $venue): JsonResponse
+    {
+        $reviews = $venue->club?->reviews()
+            ->with('user')
+            ->whereHas('booking', fn (Builder $q) => $q->where('venue_id', $venue->id))
+            ->where('is_published', true)
+            ->latest()
+            ->paginate(20);
+
+        if (! $reviews) {
+            return $this->success([
+                'reviews' => [],
+                'rating_summary' => ['average' => 0, 'total' => 0, 'distribution' => []],
+            ]);
         }
-
-        $venues = $query->paginate($request->per_page ?? 15);
 
         return response()->json([
             'success' => true,
-            'data' => VenueResource::collection($venues),
-            'meta' => [
-                'current_page' => $venues->currentPage(),
-                'last_page' => $venues->lastPage(),
-                'per_page' => $venues->perPage(),
-                'total' => $venues->total(),
+            'data' => [
+                'reviews' => $reviews->items(),
+                'meta' => [
+                    'current_page' => $reviews->currentPage(),
+                    'last_page' => $reviews->lastPage(),
+                    'per_page' => $reviews->perPage(),
+                    'total' => $reviews->total(),
+                ],
+                'rating_summary' => [
+                    'average' => (float) ($venue->avg_rating ?? 0),
+                    'total' => (int) ($venue->reviews_count ?? 0),
+                ],
             ],
         ]);
     }
 
-    /**
-     * Get available slots
-     *
-     * Checks slot availability for a venue on a given date and duration.
-     *
-     * @unauthenticated
-     *
-     * @queryParam date string required Date in Y-m-d format. Example: 2026-04-25
-     * @queryParam duration_minutes integer required Duration (30–240, multiple of 30). Example: 60
-     *
-     * @response 200 {"success": true, "data": {"available": true, "unavailable_reason": null}}
-     * @response 200 {"success": true, "data": {"available": false, "unavailable_reason": "Venue is inactive"}}
-     */
     public function availableSlots(GetAvailableSlotsRequest $request, Venue $venue): JsonResponse
     {
         $result = $this->slotAvailabilityService->check(
@@ -147,5 +207,46 @@ class VenueController extends Controller
                 'unavailable_reason' => $result->unavailableReason,
             ],
         ]);
+    }
+
+    private function baseListQuery(): Builder
+    {
+        return $this->venueRepo->query()
+            ->active()
+            ->with(self::EAGER_LIST);
+    }
+
+    private function applySort(Builder $query, ?string $sortBy): void
+    {
+        match ($sortBy) {
+            'price_asc' => $query->orderBy('price_from'),
+            'price_desc' => $query->orderByDesc('price_from'),
+            'rating' => $query->orderByDesc('avg_rating'),
+            'popular' => $query->orderByDesc('view_count'),
+            'newest' => $query->latest(),
+            default => $query->orderByDesc('is_featured')->latest(),
+        };
+    }
+
+    public function report(string $slug, ReportVenueRequest $request, VenueReportService $service): JsonResponse
+    {
+        $venue = Venue::where('slug', $slug)->firstOrFail();
+
+        try {
+            $report = $service->report(
+                $venue,
+                $request->user(),
+                $request->validated('reason'),
+                $request->validated('description'),
+                $request->validated('evidence_urls', []) ?? [],
+            );
+        } catch (ModerationException $e) {
+            return $this->error($e->getMessage(), null, $e->statusCode);
+        }
+
+        return $this->success([
+            'report_id' => $report->id,
+            'status' => $report->status,
+        ], 'تم استلام التقرير، سنراجعه قريباً', 201);
     }
 }

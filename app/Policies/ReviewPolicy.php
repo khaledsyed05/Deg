@@ -9,7 +9,7 @@ class ReviewPolicy
 {
     public function update(User $user, Review $review): bool
     {
-        return $review->user_id === $user->id;
+        return $review->canBeEditedBy($user);
     }
 
     public function delete(User $user, Review $review): bool

@@ -15,6 +15,11 @@ class WalletTransaction extends Model
     protected function casts(): array
     {
         return [
+            'amount' => 'integer',
+            'balance_after' => 'integer',
+            'metadata' => 'array',
+            'expires_at' => 'datetime',
+            'processed_at' => 'datetime',
             'created_at' => 'datetime',
         ];
     }
@@ -32,5 +37,33 @@ class WalletTransaction extends Model
     public function reference(): MorphTo
     {
         return $this->morphTo('reference');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'wallet_id', 'id')
+            ->whereHas('wallet');
+    }
+
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', 'completed');
+    }
+
+    public function scopeExpiring($query, int $days = 7)
+    {
+        return $query->completed()
+            ->whereNotNull('expires_at')
+            ->whereBetween('expires_at', [now(), now()->addDays($days)]);
+    }
+
+    public function scopeExpired($query)
+    {
+        return $query->whereNotNull('expires_at')->where('expires_at', '<=', now());
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->expires_at && $this->expires_at->isPast();
     }
 }

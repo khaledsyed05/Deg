@@ -31,3 +31,55 @@ Schedule::command('settlements:generate')
 Schedule::command('horizon:snapshot')
     ->everyFiveMinutes()
     ->onOneServer();
+
+// Process recurring bookings daily at 00:15
+Schedule::command('subscriptions:process')
+    ->dailyAt('00:15')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// Expire promotional wallet credits daily at 01:00
+Schedule::command('wallet:expire-credits')
+    ->dailyAt('01:00')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// Phase 12 — Football
+Schedule::command('football:sync')
+    ->dailyAt('03:00')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::command('football:daily-summary')
+    ->dailyAt('09:00')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::command('football:reminders')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::command('football:poll-live')
+    ->everyMinute()
+    ->between(config('football.polling.peak_hours_start', '15:00'), config('football.polling.peak_hours_end', '23:00'))
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::command('football:poll-live')
+    ->everyFiveMinutes()
+    ->unlessBetween(config('football.polling.peak_hours_start', '15:00'), config('football.polling.peak_hours_end', '23:00'))
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// Phase 14 — Geography
+Schedule::command('geography:update-counts')
+    ->dailyAt('02:00')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// Phase 16 — Event reminders (24h + 1h before each event)
+Schedule::command('events:send-reminders')
+    ->everyThirtyMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();

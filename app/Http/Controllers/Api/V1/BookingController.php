@@ -2,22 +2,44 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\BookingStatus;
+use App\Exceptions\Booking\RefundException;
+use App\Exceptions\Booking\RescheduleException;
+use App\Exceptions\Booking\SplitPaymentException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Booking\CancelBookingRequest;
+use App\Http\Requests\Api\V1\Booking\CheckAvailabilityRequest;
 use App\Http\Requests\Api\V1\Booking\CreateBookingRequest;
 use App\Http\Requests\Api\V1\Booking\ListBookingsRequest;
+use App\Http\Requests\Api\V1\Booking\RequestRefundRequest;
+use App\Http\Requests\Api\V1\Booking\RescheduleBookingRequest;
+use App\Http\Requests\Api\V1\Booking\SplitPaymentRequest;
 use App\Http\Resources\BookingResource;
+use App\Http\Resources\V1\Booking\BookingDetailResource;
+use App\Http\Resources\V1\Booking\BookingListResource;
+use App\Http\Traits\ApiResponse;
 use App\Models\Booking;
 use App\Repositories\Contracts\BookingRepositoryInterface;
+use App\Services\Booking\AvailabilityService;
 use App\Services\Booking\BookingService;
+use App\Services\Booking\PricingService;
+use App\Services\Booking\RefundService;
+use App\Services\Booking\RescheduleService;
+use App\Services\Booking\SplitPaymentService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use RuntimeException;
 
 class BookingController extends Controller
 {
+    use ApiResponse;
+
     public function __construct(
         private BookingService $bookingService,
         private BookingRepositoryInterface $bookingRepo,
+        private AvailabilityService $availability,
+        private PricingService $pricingService,
     ) {}
 
     /**
@@ -154,5 +176,219 @@ class BookingController extends Controller
             'data' => new BookingResource($result->booking),
             'refund' => $result->refundAmount,
         ]);
+    }
+
+    /**
+     * Check if a venue slot is available for booking.
+     */
+    public function checkAvailability(CheckAvailabilityRequest $request): JsonResponse
+    {
+        $result = $this->availability->check(
+            venueId: $request->integer('venue_id'),
+            date: $request->input('booking_date'),
+            startTime: $request->input('start_time'),
+            durationMinutes: $request->integer('duration_minutes'),
+        );
+
+        $pricing = $this->pricingService->calculate(
+            venueId: $request->integer('venue_id'),
+            durationMinutes: $request->integer('duration_minutes'),
+            promoCode: $request->input('promo_code'),
+        );
+
+        return $this->success([
+            'available' => $result->available,
+            'unavailable_reason' => $result->unavailableReason,
+            'venue_id' => $request->integer('venue_id'),
+            'booking_date' => $request->input('booking_date'),
+            'start_time' => $request->input('start_time'),
+            'duration_minutes' => $request->integer('duration_minutes'),
+            'pricing' => $pricing,
+        ], null, $result->available ? 200 : 409);
+    }
+
+    /**
+     * Calculate price breakdown for a potential booking.
+     */
+    public function calculatePrice(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'venue_id' => ['required', 'integer', 'exists:venues,id'],
+            'duration_minutes' => ['required', 'integer', 'min:30', 'max:240', 'multiple_of:30'],
+            'promo_code' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        return $this->success($this->pricingService->calculate(
+            venueId: (int) $data['venue_id'],
+            durationMinutes: (int) $data['duration_minutes'],
+            promoCode: $data['promo_code'] ?? null,
+        ));
+    }
+
+    /**
+     * Upcoming bookings for the authenticated user.
+     */
+    public function upcoming(Request $request): AnonymousResourceCollection
+    {
+        $bookings = $this->bookingRepo->query()
+            ->forUser($request->user()->id)
+            ->with(['venue.club.city', 'venue.media'])
+            ->upcoming()
+            ->paginate((int) ($request->integer('per_page') ?: 15));
+
+        return BookingListResource::collection($bookings);
+    }
+
+    /**
+     * Past bookings for the authenticated user.
+     */
+    public function past(Request $request): AnonymousResourceCollection
+    {
+        $bookings = $this->bookingRepo->query()
+            ->forUser($request->user()->id)
+            ->with(['venue.club.city', 'venue.media'])
+            ->past()
+            ->paginate((int) ($request->integer('per_page') ?: 15));
+
+        return BookingListResource::collection($bookings);
+    }
+
+    /**
+     * Receipt payload for a booking (lightweight JSON, for client-side rendering).
+     */
+    public function receipt(Booking $booking, Request $request): JsonResponse
+    {
+        abort_unless($booking->user_id === $request->user()->id, 403);
+
+        $booking->load(['venue.club.city', 'payments']);
+
+        return $this->success([
+            'booking_code' => $booking->booking_code,
+            'venue_name' => $booking->venue?->name,
+            'club_name' => $booking->venue?->club?->name,
+            'city' => $booking->venue?->club?->city?->name,
+            'booking_date' => $booking->booking_date?->format('Y-m-d'),
+            'time' => "{$booking->start_time} – {$booking->end_time}",
+            'duration_minutes' => (int) $booking->duration_minutes,
+            'total_price' => (int) $booking->total_price,
+            'deposit_amount' => (int) $booking->deposit_amount,
+            'remaining_amount' => (int) $booking->remaining_amount,
+            'discount_amount' => (int) $booking->discount_amount,
+            'currency' => $booking->currency ?? 'SYP',
+            'status' => $booking->status?->value,
+            'deposit_status' => $booking->deposit_status?->value,
+            'remaining_status' => $booking->remaining_status?->value,
+            'payments' => $booking->payments->map(fn ($p) => [
+                'id' => $p->id,
+                'provider' => $p->provider?->value,
+                'status' => $p->status?->value,
+                'amount' => (int) $p->amount,
+                'completed_at' => $p->completed_at?->toISOString(),
+            ])->values(),
+            'issued_at' => now()->toISOString(),
+        ]);
+    }
+
+    /**
+     * Mark the booking as checked in (QR scan at the venue).
+     */
+    public function checkin(Booking $booking, Request $request): JsonResponse
+    {
+        abort_unless($booking->user_id === $request->user()->id, 403);
+
+        if (! in_array($booking->status, [BookingStatus::Confirmed, BookingStatus::Scheduled], true)) {
+            return $this->error(__('bookings.cannot_check_in'), null, 400);
+        }
+
+        if (! $booking->isToday()) {
+            return $this->error(__('bookings.checkin_today_only'), null, 400);
+        }
+
+        $booking->checkIn();
+
+        return $this->success(
+            new BookingDetailResource($booking->fresh()->load(['venue.club.city'])),
+            __('bookings.checked_in'),
+        );
+    }
+
+    public function reschedule(int $id, RescheduleBookingRequest $request, RescheduleService $service): JsonResponse
+    {
+        $booking = Booking::findOrFail($id);
+
+        try {
+            $rescheduled = $service->reschedule(
+                $booking,
+                $request->user(),
+                $request->validated('new_slot_date'),
+                $request->validated('new_start_time'),
+                $request->validated('new_end_time'),
+                $request->validated('reason'),
+            );
+        } catch (RescheduleException $e) {
+            return $this->error($e->getMessage(), null, $e->statusCode);
+        }
+
+        $history = $rescheduled->reschedule_history ?? [];
+        $latest = end($history) ?: [];
+
+        return $this->success([
+            'booking_id' => $rescheduled->id,
+            'previous_schedule' => $latest['from'] ?? null,
+            'new_schedule' => $latest['to'] ?? null,
+            'price_difference' => $latest['price_difference'] ?? 0,
+            'reschedule_count' => $rescheduled->reschedule_count,
+            'remaining_reschedules_allowed' => max(0,
+                (int) config('bookings.reschedule.max_per_booking', 2) - (int) $rescheduled->reschedule_count
+            ),
+        ], 'تم تغيير موعد الحجز بنجاح');
+    }
+
+    public function requestRefund(int $id, RequestRefundRequest $request, RefundService $service): JsonResponse
+    {
+        $booking = Booking::findOrFail($id);
+
+        try {
+            $refundRequest = $service->requestRefund(
+                $booking,
+                $request->user(),
+                $request->validated('reason'),
+                $request->validated('refund_method', 'wallet') ?? 'wallet',
+            );
+        } catch (RefundException $e) {
+            return $this->error($e->getMessage(), null, $e->statusCode);
+        }
+
+        return $this->success([
+            'refund_request_id' => $refundRequest->id,
+            'status' => $refundRequest->status,
+            'approved_amount' => $refundRequest->approved_amount,
+            'requested_amount' => $refundRequest->requested_amount,
+            'refund_method' => $refundRequest->refund_method,
+            'policy_applied' => $refundRequest->policy_applied,
+            'auto_approved' => (bool) $refundRequest->auto_approved,
+            'estimated_processing_time_minutes' => $refundRequest->refund_method === 'wallet' ? 5 : null,
+            'estimated_review_time_hours' => $refundRequest->status === 'pending_review' ? 24 : null,
+        ], $refundRequest->auto_approved
+            ? 'تم إصدار طلب الاسترداد بنجاح'
+            : 'تم استلام طلب الاسترداد، سيتم مراجعته قريباً');
+    }
+
+    public function splitPayment(int $id, SplitPaymentRequest $request, SplitPaymentService $service): JsonResponse
+    {
+        $booking = Booking::findOrFail($id);
+
+        try {
+            $result = $service->createSplit(
+                $booking,
+                $request->user(),
+                $request->validated('split_method'),
+                (array) $request->validated('splits'),
+            );
+        } catch (SplitPaymentException $e) {
+            return $this->error($e->getMessage(), null, $e->statusCode);
+        }
+
+        return $this->success($result, 'تم تقسيم الدفع بنجاح');
     }
 }

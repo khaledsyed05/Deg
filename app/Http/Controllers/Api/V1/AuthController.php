@@ -8,10 +8,13 @@ use App\Http\Requests\Api\V1\Auth\LoginOtpSendRequest;
 use App\Http\Requests\Api\V1\Auth\LoginOtpVerifyRequest;
 use App\Http\Requests\Api\V1\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
+use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Auth\FirebaseAuthService;
 use App\Services\Auth\OtpService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class AuthController extends Controller
@@ -23,22 +26,14 @@ class AuthController extends Controller
     ) {}
 
     /**
-     * Register a new user
-     *
-     * Creates a new player account with phone number and password.
-     * Returns a Sanctum token for immediate authentication.
-     *
-     * @unauthenticated
-     *
-     * @response 201 {"success": true, "data": {"user": {"id": 1, "name": "محمد الأحمد", "phone_number": "+963944123456"}, "token": "1|abc..."}}
-     * @response 422 {"success": false, "errors": {"phone_number": ["رقم الهاتف مطلوب"]}}
+     * Register a new user (password flow).
      */
     public function register(RegisterRequest $request): JsonResponse
     {
         $user = $this->userRepo->create($request->validated());
         $user->assignRole('player');
 
-        $token = $user->createToken('mobile')->plainTextToken;
+        $token = $user->createToken('mobile-app')->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -50,15 +45,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Send OTP
-     *
-     * Sends a one-time password via SMS to the provided phone number.
-     * Rate limited to 3 requests per 10 minutes per phone number.
-     *
-     * @unauthenticated
-     *
-     * @response 200 {"success": true, "data": {"challenge_uuid": "550e8400-e29b-41d4-a716-446655440000", "expires_in_seconds": 120}}
-     * @response 429 {"success": false, "message": "عدد الطلبات كثير جداً"}
+     * Send OTP to the given phone via WhatsApp/SMS.
      */
     public function sendOtp(LoginOtpSendRequest $request): JsonResponse
     {
@@ -77,16 +64,34 @@ class AuthController extends Controller
     }
 
     /**
-     * Verify OTP and login
-     *
-     * Validates the OTP code and returns an authentication token.
-     * Optionally stores the FCM token for push notifications.
-     *
-     * @unauthenticated
-     *
-     * @response 200 {"success": true, "data": {"user": {"id": 1, "name": "محمد الأحمد"}, "token": "1|abc..."}}
-     * @response 401 {"success": false, "message": "رمز التحقق غير صحيح"}
-     * @response 404 {"success": false, "message": "المستخدم غير موجود"}
+     * Resend an OTP for an existing challenge.
+     */
+    public function resendOtp(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'challenge_uuid' => ['required', 'string', 'uuid'],
+        ]);
+
+        try {
+            $uuid = $this->otpService->resend($data['challenge_uuid']);
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 429);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'challenge_uuid' => $uuid,
+                'expires_in_seconds' => 120,
+            ],
+        ]);
+    }
+
+    /**
+     * Verify OTP. Auto-registers the user if no account exists for the phone.
      */
     public function verifyOtp(LoginOtpVerifyRequest $request): JsonResponse
     {
@@ -102,24 +107,60 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $user = $this->userRepo->findByPhone($request->phone);
+        [$user, $isNewUser] = DB::transaction(function () use ($request) {
+            $user = User::firstOrCreate(
+                ['phone_number' => $request->phone],
+                [
+                    'country_code' => '+963',
+                    'phone_verified_at' => now(),
+                ],
+            );
 
-        if (! $user) {
-            return response()->json([
-                'success' => false,
-                'message' => __('auth.user_not_found'),
-            ], 404);
-        }
+            $isNewUser = $user->wasRecentlyCreated;
 
-        if ($request->fcm_token) {
-            $user->update(['fcm_token' => $request->fcm_token]);
-        }
+            if ($isNewUser) {
+                $user->assignRole('player');
+            }
 
-        $token = $user->createToken('mobile')->plainTextToken;
+            if (is_null($user->phone_verified_at)) {
+                $user->update(['phone_verified_at' => now()]);
+            }
+
+            if ($request->fcm_token) {
+                $user->update(['fcm_token' => $request->fcm_token]);
+            }
+
+            if ($request->filled('device_id') && $request->filled('fcm_token')) {
+                $user->devices()->updateOrCreate(
+                    ['device_id' => $request->device_id],
+                    [
+                        'fcm_token' => $request->fcm_token,
+                        'platform' => $request->input('platform', 'android'),
+                        'last_used_at' => now(),
+                    ],
+                );
+            }
+
+            return [$user, $isNewUser];
+        });
+
+        activity()
+            ->causedBy($user)
+            ->performedOn($user)
+            ->event($isNewUser ? 'registered_via_otp' : 'logged_in_via_otp')
+            ->log($isNewUser ? 'New user registered via OTP' : 'User logged in via OTP');
+
+        $token = $user->createToken('mobile-app')->plainTextToken;
 
         return response()->json([
             'success' => true,
+            'message' => __($isNewUser ? 'auth.registered' : 'auth.logged_in'),
             'data' => [
+                'auth_outcome' => $isNewUser ? 'registered' : 'logged_in',
+                'requires_profile_completion' => is_null($user->name) || is_null($user->default_city_id),
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'expires_in' => 31536000,
                 'user' => new UserResource($user),
                 'token' => $token,
             ],
@@ -127,67 +168,226 @@ class AuthController extends Controller
     }
 
     /**
-     * Google Sign-In
-     *
-     * Authenticates a user using a Firebase Google ID token.
-     * Creates a new account automatically if the user doesn't exist.
-     *
-     * @unauthenticated
-     *
-     * @response 200 {"success": true, "data": {"user": {"id": 1, "name": "Mohammad"}, "token": "1|abc..."}}
-     * @response 401 {"success": false, "message": "رمز Google غير صالح"}
+     * Google Sign-In via Firebase ID token. Auto-registers new users.
      */
     public function googleSignIn(GoogleSignInRequest $request): JsonResponse
     {
         try {
             $claims = $this->firebaseAuth->verifyIdToken($request->id_token);
-        } catch (RuntimeException) {
+        } catch (RuntimeException $e) {
             return response()->json([
                 'success' => false,
                 'message' => __('auth.google_token_invalid'),
+                'errors' => ['id_token' => [$e->getMessage()]],
             ], 401);
         }
 
-        $user = $this->userRepo->findByFirebaseUid($claims['uid']);
+        [$user, $isNewUser] = DB::transaction(function () use ($claims, $request) {
+            $user = User::where('firebase_uid', $claims['uid'])->first();
 
-        if (! $user) {
-            $user = $this->userRepo->create([
-                'firebase_uid' => $claims['uid'],
-                'email' => $claims['email'] ?? null,
-                'name' => $claims['name'] ?? null,
-                'firebase_provider' => 'google.com',
-            ]);
-        }
+            if (! $user && ! empty($claims['email'])) {
+                $user = User::where('email', $claims['email'])->first();
+            }
 
-        if ($request->fcm_token) {
-            $user->update(['fcm_token' => $request->fcm_token]);
-        }
+            $isNewUser = false;
 
-        $token = $user->createToken('mobile')->plainTextToken;
+            if (! $user) {
+                $user = User::create([
+                    'name' => $claims['name'] ?? null,
+                    'email' => $claims['email'] ?? null,
+                    'firebase_uid' => $claims['uid'],
+                    'firebase_provider' => 'google.com',
+                ]);
+                $user->assignRole('player');
+                $isNewUser = true;
+
+                $user->socialIdentities()->create([
+                    'provider' => 'google',
+                    'provider_uid' => $claims['uid'],
+                    'provider_email' => $claims['email'] ?? null,
+                ]);
+            } elseif (is_null($user->firebase_uid)) {
+                $user->update([
+                    'firebase_uid' => $claims['uid'],
+                    'firebase_provider' => 'google.com',
+                ]);
+            }
+
+            if ($request->fcm_token) {
+                $user->update(['fcm_token' => $request->fcm_token]);
+            }
+
+            if ($request->filled('device_id') && $request->filled('fcm_token')) {
+                $user->devices()->updateOrCreate(
+                    ['device_id' => $request->device_id],
+                    [
+                        'fcm_token' => $request->fcm_token,
+                        'platform' => $request->input('platform', 'android'),
+                        'last_used_at' => now(),
+                    ],
+                );
+            }
+
+            return [$user, $isNewUser];
+        });
+
+        activity()
+            ->causedBy($user)
+            ->performedOn($user)
+            ->event($isNewUser ? 'registered_via_google' : 'logged_in_via_google')
+            ->log($isNewUser ? 'New user registered via Google' : 'User logged in via Google');
+
+        $token = $user->createToken('mobile-app')->plainTextToken;
 
         return response()->json([
             'success' => true,
+            'message' => __($isNewUser ? 'auth.registered' : 'auth.logged_in'),
             'data' => [
+                'auth_outcome' => $isNewUser ? 'registered' : 'logged_in',
+                'requires_profile_completion' => is_null($user->name) || is_null($user->phone_number) || is_null($user->default_city_id),
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'expires_in' => 31536000,
                 'user' => new UserResource($user),
                 'token' => $token,
+                'onboarding_prefill' => $isNewUser ? [
+                    'name' => $claims['name'] ?? null,
+                    'email' => $claims['email'] ?? null,
+                    'avatar_url' => $claims['picture'] ?? null,
+                ] : null,
             ],
         ]);
     }
 
     /**
-     * Logout
-     *
-     * Revokes all access tokens for the authenticated user.
-     *
-     * @response 200 {"success": true, "message": "تم تسجيل الخروج"}
+     * Issue a new Sanctum token and revoke the current one.
      */
-    public function logout(): JsonResponse
+    public function refresh(Request $request): JsonResponse
     {
-        auth()->user()->tokens()->delete();
+        $user = $request->user();
+        $request->user()->currentAccessToken()->delete();
+
+        $token = $user->createToken('mobile-app')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => __('auth.token_refreshed'),
+            'data' => [
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'expires_in' => 31536000,
+            ],
+        ]);
+    }
+
+    /**
+     * Revoke the current access token only.
+     */
+    public function logout(Request $request): JsonResponse
+    {
+        $request->user()->currentAccessToken()->delete();
 
         return response()->json([
             'success' => true,
             'message' => __('auth.logged_out'),
         ]);
+    }
+
+    /**
+     * Revoke every access token for the authenticated user.
+     */
+    public function logoutAll(Request $request): JsonResponse
+    {
+        $request->user()->tokens()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('auth.logged_out_all'),
+        ]);
+    }
+
+    /**
+     * List all active Sanctum sessions (tokens) for the user.
+     */
+    public function sessions(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $currentTokenId = (int) $user->currentAccessToken()->id;
+
+        $tokens = $user->tokens()->orderByDesc('last_used_at')->get();
+
+        $sessions = $tokens->map(fn ($token) => [
+            'id' => (int) $token->id,
+            'name' => $this->humanizeTokenName($token->name),
+            'last_used_at' => $token->last_used_at?->toIso8601String(),
+            'created_at' => $token->created_at?->toIso8601String(),
+            'is_current' => (int) $token->id === $currentTokenId,
+            'device_type' => $this->detectDeviceType($token->name),
+        ])->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'data' => $sessions,
+                'meta' => [
+                    'total_active_sessions' => $sessions->count(),
+                    'current_session_id' => $currentTokenId,
+                ],
+            ],
+        ]);
+    }
+
+    public function revokeSession(int $id, Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $currentTokenId = (int) $user->currentAccessToken()->id;
+
+        if ($id === $currentTokenId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يمكن إلغاء الجلسة الحالية. استخدم تسجيل الخروج',
+            ], 422);
+        }
+
+        $token = $user->tokens()->find($id);
+
+        if (! $token) {
+            return response()->json([
+                'success' => false,
+                'message' => 'الجلسة غير موجودة',
+            ], 404);
+        }
+
+        $token->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إلغاء الجلسة',
+        ]);
+    }
+
+    private function humanizeTokenName(?string $name): string
+    {
+        if (empty($name) || $name === 'auth_token') {
+            return 'جهاز غير معروف';
+        }
+
+        return str_replace(['-', '_'], ' ', $name);
+    }
+
+    private function detectDeviceType(?string $name): string
+    {
+        if (! $name) {
+            return 'unknown';
+        }
+
+        $lower = strtolower($name);
+
+        return match (true) {
+            str_contains($lower, 'iphone'), str_contains($lower, 'ipad'), str_contains($lower, 'ios') => 'mobile',
+            str_contains($lower, 'android'), str_contains($lower, 'samsung') => 'mobile',
+            str_contains($lower, 'web'), str_contains($lower, 'browser') => 'web',
+            default => 'mobile',
+        };
     }
 }

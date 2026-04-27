@@ -13,7 +13,6 @@ use App\Repositories\Contracts\BookingRepositoryInterface;
 use App\Services\Payment\CommissionService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use RuntimeException;
 
 class BookingService
@@ -122,6 +121,6 @@ class BookingService
 
     private function generateBookingCode(): string
     {
-        return 'BK-'.strtoupper(Str::random(8));
+        return Booking::generateBookingCode();
     }
 }

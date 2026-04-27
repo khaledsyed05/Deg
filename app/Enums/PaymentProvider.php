@@ -9,4 +9,5 @@ enum PaymentProvider: string
     case Fatora = 'fatora';
     case SamaPay = 'sama_pay';
     case Wallet = 'wallet';
+    case Cash = 'cash';
 }

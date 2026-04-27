@@ -3,31 +3,25 @@ import { Head, router, usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { computed, ref } from 'vue'
 import { useI18n } from '@/i18n'
+import DataTable from 'datatables.net-vue3'
+import DataTablesCore from 'datatables.net-dt'
+import 'datatables.net-responsive-dt'
+import 'datatables.net-dt/css/dataTables.dataTables.min.css'
+import 'datatables.net-responsive-dt/css/responsive.dataTables.min.css'
 
-interface Club { id: number; name: string }
+DataTable.use(DataTablesCore)
 
-interface Settlement {
+interface Club {
   id: number
-  club: Club
-  total_amount: number
-  status: string
-  period_from: string
-  period_to: string
-  created_at: string
+  name: string
 }
 
-interface PaginatedSettlements {
-  data: Settlement[]
-  current_page: number
-  last_page: number
-  total: number
-}
-
-defineProps<{ settlements: PaginatedSettlements; clubs: Club[] }>()
+defineProps<{ clubs: Club[] }>()
 
 const page = usePage()
 const locale = computed(() => (page.props.locale as string) ?? 'ar')
 const tr = computed(() => useI18n(locale.value).t)
+const isAr = computed(() => locale.value === 'ar')
 
 const showForm = ref(false)
 const form = ref({ club_id: '', from_date: '', to_date: '' })
@@ -40,32 +34,77 @@ function submitForm() {
       showForm.value = false
       form.value = { club_id: '', from_date: '', to_date: '' }
     },
-    onFinish: () => { isSubmitting.value = false },
+    onFinish: () => {
+      isSubmitting.value = false
+    },
   })
 }
 
 const statusColors: Record<string, string> = {
-  draft: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300',
-  paid: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400',
-  pending: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400',
+  draft: 'bg-gray-100 text-gray-600',
+  paid: 'bg-emerald-100 text-emerald-700',
+  pending: 'bg-amber-100 text-amber-700',
 }
 
-function statusLabel(status: string): string {
-  const map: Record<string, keyof typeof tr.value> = {
-    draft: 'statusDraft',
-    paid: 'statusPaid',
-    pending: 'statusPending',
-  }
-  const key = map[status]
-  return key ? (tr.value[key] as string) : status
+const statusLabels: Record<string, Record<string, string>> = {
+  ar: { draft: 'مسودة', paid: 'مدفوع', pending: 'معلق' },
+  en: { draft: 'Draft', paid: 'Paid', pending: 'Pending' },
 }
+
+const dtOptions = computed(() => ({
+  serverSide: true,
+  processing: true,
+  responsive: true,
+  ajax: '/admin/settlements/datatables',
+  order: [[0, 'desc']],
+  columns: [
+    { data: 'id', visible: false },
+    { data: 'club_name' },
+    { data: 'period' },
+    {
+      data: 'total_amount',
+      render: (data: number) =>
+        `<span class="font-semibold">${(data || 0).toLocaleString()}</span> <span class="text-xs text-gray-400">${isAr.value ? 'ل.س' : 'SYP'}</span>`,
+    },
+    {
+      data: 'status',
+      render: (data: string) => {
+        const cls = statusColors[data] ?? 'bg-gray-100 text-gray-600'
+        const label = (statusLabels[locale.value] ?? statusLabels.ar)[data] ?? data
+        return `<span class="text-xs font-semibold px-2.5 py-1 rounded-full ${cls}">${label}</span>`
+      },
+    },
+    {
+      data: 'id',
+      orderable: false,
+      searchable: false,
+      render: (data: number) => {
+        const label = isAr.value ? 'عرض' : 'View'
+        return `<a href="/admin/settlements/${data}" class="text-emerald-600 hover:text-emerald-700 font-semibold text-xs hover:underline underline-offset-2">${label}</a>`
+      },
+    },
+  ],
+  language: isAr.value
+    ? {
+        search: 'بحث:',
+        lengthMenu: 'عرض _MENU_ سجلات',
+        info: 'عرض _START_ إلى _END_ من _TOTAL_ سجل',
+        infoEmpty: 'لا توجد سجلات',
+        infoFiltered: '(من أصل _MAX_ سجل)',
+        paginate: { first: '«', last: '»', next: '›', previous: '‹' },
+        emptyTable: 'لا توجد تسويات',
+        processing: 'جارٍ التحميل...',
+        zeroRecords: 'لا توجد نتائج مطابقة',
+      }
+    : {},
+}))
 </script>
 
 <template>
   <Head :title="tr.settlements" />
 
   <AdminLayout>
-    <div class="px-4 sm:px-6 py-6 sm:py-8 max-w-5xl">
+    <div class="px-4 sm:px-6 py-6 sm:py-8">
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ tr.settlements }}</h1>
         <button
@@ -77,11 +116,16 @@ function statusLabel(status: string): string {
       </div>
 
       <!-- Create Form -->
-      <div v-if="showForm" class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-5 shadow-sm">
+      <div
+        v-if="showForm"
+        class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-5 mb-5 shadow-sm"
+      >
         <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">{{ tr.createNewSettlement }}</h2>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">{{ tr.club }}</label>
+            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
+              {{ tr.club }}
+            </label>
             <select
               v-model="form.club_id"
               class="w-full border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
@@ -91,7 +135,9 @@ function statusLabel(status: string): string {
             </select>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">{{ tr.fromDate }}</label>
+            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
+              {{ tr.fromDate }}
+            </label>
             <input
               v-model="form.from_date"
               type="date"
@@ -99,7 +145,9 @@ function statusLabel(status: string): string {
             />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">{{ tr.toDate }}</label>
+            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
+              {{ tr.toDate }}
+            </label>
             <input
               v-model="form.to_date"
               type="date"
@@ -124,61 +172,26 @@ function statusLabel(status: string): string {
         </div>
       </div>
 
-      <!-- Settlements Table -->
-      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm">
-        <div v-if="settlements.data.length === 0" class="p-14 text-center">
-          <div class="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-2xl mx-auto mb-4">💰</div>
-          <p class="text-gray-500 dark:text-gray-400 font-medium text-sm">{{ tr.noSettlements }}</p>
-        </div>
-        <div v-else class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b dark:border-gray-800 bg-gray-50/80 dark:bg-gray-800/50">
-                <th class="text-start px-5 py-3.5 font-semibold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">{{ tr.club }}</th>
-                <th class="text-start px-5 py-3.5 font-semibold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide hidden md:table-cell">{{ tr.period }}</th>
-                <th class="text-start px-5 py-3.5 font-semibold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">{{ tr.total }}</th>
-                <th class="text-start px-5 py-3.5 font-semibold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">{{ tr.status }}</th>
-                <th class="text-start px-5 py-3.5 font-semibold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">{{ tr.details }}</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50 dark:divide-gray-800">
-              <tr
-                v-for="s in settlements.data"
-                :key="s.id"
-                class="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors"
-              >
-                <td class="px-5 py-4 font-medium text-gray-900 dark:text-white">{{ s.club?.name }}</td>
-                <td class="px-5 py-4 text-gray-500 dark:text-gray-400 text-xs hidden md:table-cell">{{ s.period_from }} — {{ s.period_to }}</td>
-                <td class="px-5 py-4 font-semibold text-gray-900 dark:text-white">
-                  {{ (s.total_amount || 0).toLocaleString() }}
-                  <span class="text-xs text-gray-400 ms-1">{{ locale === 'ar' ? 'ل.س' : 'SYP' }}</span>
-                </td>
-                <td class="px-5 py-4">
-                  <span
-                    class="text-xs font-semibold px-2.5 py-1 rounded-full"
-                    :class="statusColors[s.status] ?? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'"
-                  >
-                    {{ statusLabel(s.status) }}
-                  </span>
-                </td>
-                <td class="px-5 py-4">
-                  <a
-                    :href="`/admin/settlements/${s.id}`"
-                    class="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-semibold text-xs underline-offset-2 hover:underline"
-                  >
-                    {{ tr.view }}
-                  </a>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <!-- DataTable -->
+      <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        <DataTable
+          :key="locale"
+          :options="dtOptions"
+          class="display w-full"
+          :dir="isAr ? 'rtl' : 'ltr'"
+        >
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>{{ isAr ? 'النادي' : 'Club' }}</th>
+              <th>{{ isAr ? 'الفترة' : 'Period' }}</th>
+              <th>{{ isAr ? 'الإجمالي' : 'Total' }}</th>
+              <th>{{ isAr ? 'الحالة' : 'Status' }}</th>
+              <th>{{ isAr ? 'التفاصيل' : 'Details' }}</th>
+            </tr>
+          </thead>
+        </DataTable>
       </div>
-
-      <!-- Pagination -->
-      <p v-if="settlements.last_page > 1" class="mt-4 text-xs text-gray-500 dark:text-gray-400 text-center">
-        {{ tr.page(settlements.current_page, settlements.last_page, settlements.total) }}
-      </p>
     </div>
   </AdminLayout>
 </template>

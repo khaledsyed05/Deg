@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\Club;
 use App\Repositories\Contracts\AppEnvironmentRepositoryInterface;
 use App\Repositories\Contracts\AppPlatformRepositoryInterface;
 use App\Repositories\Contracts\BookingRepositoryInterface;
@@ -78,8 +79,8 @@ class AppServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(BaileysService::class, fn () => new BaileysService(
-            serviceUrl: config('services.baileys.url', ''),
-            apiKey: config('services.baileys.key', ''),
+            serviceUrl: config('services.whatsapp.base_url', ''),
+            apiKey: config('services.whatsapp.api_key', ''),
         ));
 
         $this->app->singleton(FcmService::class, fn () => new FcmService(
@@ -138,6 +139,20 @@ class AppServiceProvider extends ServiceProvider
                 'qr_code' => session('qr_code'),
             ],
             'locale' => fn () => app()->getLocale(),
+            'club' => function () {
+                $user = request()->user();
+                if (! $user || ! $user->hasRole('club_manager')) {
+                    return null;
+                }
+                $club = Club::where('owner_id', $user->id)->first()
+                    ?? $user->clubs()->first();
+
+                return $club ? [
+                    'id' => $club->id,
+                    'name' => $club->getTranslation('name', app()->getLocale()) ?: $club->name,
+                    'status' => $club->status?->value,
+                ] : null;
+            },
         ]);
     }
 }

@@ -27,7 +27,22 @@ export default defineConfig({
     },
     server: {
         watch: {
-            ignored: ['**/storage/framework/views/**'],
+            ignored: [
+                '**/storage/framework/**',
+                '**/storage/logs/**',
+                '**/bootstrap/cache/**',
+                '**/vendor/**',
+                '**/node_modules/.vite/**',
+            ],
         },
+    },
+    optimizeDeps: {
+        exclude: [
+            'datatables.net',
+            'datatables.net-dt',
+            'datatables.net-vue3',
+            'datatables.net-responsive',
+            'datatables.net-responsive-dt',
+        ],
     },
 });

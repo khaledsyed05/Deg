@@ -16,7 +16,13 @@ class Settlement extends Model
             'period_from' => 'date',
             'period_to' => 'date',
             'settled_at' => 'datetime',
+            'notes_updated_at' => 'datetime',
         ];
+    }
+
+    public function notesUpdatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'notes_updated_by');
     }
 
     public function club(): BelongsTo

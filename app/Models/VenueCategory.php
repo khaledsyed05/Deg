@@ -44,4 +44,9 @@ class VenueCategory extends Model implements Sortable
     {
         return $this->hasMany(Venue::class, 'category_id');
     }
+
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
+    }
 }

@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(docker compose:*)",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "Bash(curl -s http://localhost:8001/api/v1/categories)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('admin id:', d['admin']['id']\\); print\\('mgr id:', d['club_manager']['id'], 'club_id:', d['club_manager']['club_id']\\); print\\('user id:', d['user']['id']\\)\" docker compose exec -T app cat /tmp/tokens.json)",
+      "Bash(python3 scripts/capture_real_responses.py --capture-failures)"
     ]
   },
   "enableAllProjectMcpServers": true,

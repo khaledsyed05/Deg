@@ -1,4 +1,4 @@
-const CACHE_NAME = 'daqahgezly-v1';
+const CACHE_NAME = 'daqahgezly-v2';
 const OFFLINE_URL = '/admin/login';
 
 const PRECACHE_ASSETS = [
@@ -27,7 +27,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Cache-first for static assets (JS/CSS/images)
-  if (url.pathname.startsWith('/build/') || url.pathname.startsWith('/icons/')) {
+  if (url.pathname.startsWith('/build/') || url.pathname.startsWith('/pwa-icons/')) {
     event.respondWith(
       caches.match(event.request).then((cached) => {
         if (cached) return cached;

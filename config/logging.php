@@ -127,6 +127,38 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        'emergencies' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/emergencies.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/security.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
+        'groups' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/groups.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'football' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/football.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 14,
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];

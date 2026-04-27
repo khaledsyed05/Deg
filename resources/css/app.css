@@ -2,9 +2,9 @@
 @import 'tailwindcss';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+@source '../**/*.ts';
 @source '../**/*.vue';
 
 @variant dark (&:where(.dark, .dark *));
@@ -12,4 +12,171 @@
 @theme {
     --font-sans: 'Cairo', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+/* ===== DataTables Overrides – Emerald Theme ===== */
+
+/* Table header cells */
+table.dataTable thead > tr > th,
+table.dataTable thead > tr > td {
+    padding: 14px 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgb(107 114 128);
+    background-color: rgba(249 250 251 / 0.8);
+    border-bottom: 1px solid rgb(243 244 246) !important;
+}
+
+html.dark table.dataTable thead > tr > th,
+html.dark table.dataTable thead > tr > td {
+    color: rgb(156 163 175);
+    background-color: rgba(31 41 55 / 0.5);
+    border-bottom: 1px solid rgb(31 41 55) !important;
+}
+
+/* Table body cells */
+table.dataTable tbody > tr > td {
+    padding: 14px 20px;
+    font-size: 0.875rem;
+    border-bottom: 1px solid rgb(249 250 251);
+    color: rgb(17 24 39);
+}
+
+html.dark table.dataTable tbody > tr > td {
+    border-bottom: 1px solid rgb(31 41 55);
+    color: rgb(243 244 246);
+}
+
+/* Row hover */
+table.dataTable.display > tbody > tr:hover > *,
+table.dataTable.display > tbody > tr.odd:hover > *,
+table.dataTable.display > tbody > tr.even:hover > * {
+    box-shadow: inset 0 0 0 9999px rgba(249 250 251 / 0.5) !important;
+}
+
+html.dark table.dataTable.display > tbody > tr:hover > *,
+html.dark table.dataTable.display > tbody > tr.odd:hover > *,
+html.dark table.dataTable.display > tbody > tr.even:hover > * {
+    box-shadow: inset 0 0 0 9999px rgba(31 41 55 / 0.3) !important;
+}
+
+/* Remove odd/even striping */
+table.dataTable.display > tbody > tr.odd > *,
+table.dataTable.display > tbody > tr.even > * {
+    box-shadow: none;
+}
+
+/* No footer border */
+table.dataTable.no-footer {
+    border-bottom: none;
+}
+
+/* Controls bar (search + length) */
+div.dt-container div.dt-layout-row:not(.dt-layout-table) {
+    padding: 12px 20px;
+    font-size: 0.875rem;
+    color: rgb(107 114 128);
+}
+
+html.dark div.dt-container div.dt-layout-row:not(.dt-layout-table) {
+    color: rgb(156 163 175);
+}
+
+/* Search input */
+div.dt-container .dt-search input {
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.75rem;
+    padding: 0.45rem 0.875rem;
+    font-size: 0.8125rem;
+    font-family: inherit;
+    outline: none;
+    margin-inline-start: 6px;
+}
+
+div.dt-container .dt-search input:focus {
+    border-color: rgb(16 185 129);
+    box-shadow: 0 0 0 2px rgba(16 185 129 / 0.2);
+}
+
+html.dark div.dt-container .dt-search input {
+    border-color: rgb(55 65 81);
+    background-color: rgb(31 41 55);
+    color: white;
+}
+
+/* Length select */
+div.dt-container .dt-length select {
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.625rem;
+    font-size: 0.8125rem;
+    font-family: inherit;
+    outline: none;
+    margin-inline: 6px;
+}
+
+html.dark div.dt-container .dt-length select {
+    border-color: rgb(55 65 81);
+    background-color: rgb(31 41 55);
+    color: white;
+}
+
+/* Pagination buttons */
+div.dt-container .dt-paging .dt-paging-button {
+    border-radius: 0.5rem !important;
+    font-size: 0.75rem;
+    padding: 0.375rem 0.625rem;
+}
+
+div.dt-container .dt-paging .dt-paging-button.current,
+div.dt-container .dt-paging .dt-paging-button.current:hover {
+    background: rgb(16 185 129) !important;
+    border-color: rgb(16 185 129) !important;
+    color: white !important;
+}
+
+div.dt-container .dt-paging .dt-paging-button:not(.current):hover {
+    background: rgb(243 244 246) !important;
+    border-color: rgb(229 231 235) !important;
+    color: rgb(17 24 39) !important;
+}
+
+html.dark div.dt-container .dt-paging .dt-paging-button:not(.current):hover {
+    background: rgb(31 41 55) !important;
+    border-color: rgb(55 65 81) !important;
+    color: white !important;
+}
+
+html.dark div.dt-container .dt-paging .dt-paging-button.current,
+html.dark div.dt-container .dt-paging .dt-paging-button.current:hover {
+    background: rgb(16 185 129) !important;
+    border-color: rgb(16 185 129) !important;
+    color: white !important;
+}
+
+/* Processing overlay */
+div.dt-container div.dt-processing {
+    background: rgba(255 255 255 / 0.9);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    color: rgb(107 114 128);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+html.dark div.dt-container div.dt-processing {
+    background: rgba(17 24 39 / 0.9);
+    color: rgb(156 163 175);
+}
+
+/* Bottom info row border */
+div.dt-container div.dt-layout-row.dt-layout-footer {
+    border-top: 1px solid rgb(243 244 246);
+    padding: 10px 20px;
+}
+
+html.dark div.dt-container div.dt-layout-row.dt-layout-footer {
+    border-top-color: rgb(31 41 55);
 }

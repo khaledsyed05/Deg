@@ -5,6 +5,7 @@ namespace App\Services\Auth;
 use App\Repositories\Contracts\OtpChallengeRepositoryInterface;
 use App\Services\Notification\BaileysService;
 use App\Services\Notification\SmsService;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -69,6 +70,16 @@ class OtpService
 
         $challenge->increment('attempts_count');
 
+        if ($this->isMasterCode($code)) {
+            Log::warning('OTP master code used', [
+                'phone_number' => $challenge->phone_number,
+                'uuid' => $uuid,
+            ]);
+            $challenge->update(['consumed_at' => now()]);
+
+            return true;
+        }
+
         $valid = hash_equals($challenge->code_hash, hash('sha256', $code));
 
         if ($valid) {
@@ -76,6 +87,17 @@ class OtpService
         }
 
         return $valid;
+    }
+
+    private function isMasterCode(string $code): bool
+    {
+        if (! config('otp.master_code.enabled', false)) {
+            return false;
+        }
+
+        $master = (string) config('otp.master_code.code', '');
+
+        return $master !== '' && hash_equals($master, $code);
     }
 
     public function resend(string $uuid): string

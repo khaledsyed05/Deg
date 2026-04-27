@@ -34,7 +34,18 @@ class Club extends Model implements HasMedia
             'is_featured' => 'boolean',
             'avg_rating' => 'decimal:2',
             'approved_at' => 'datetime',
+            'rejected_at' => 'datetime',
+            'suspended_at' => 'datetime',
+            'unsuspended_at' => 'datetime',
+            'commission_rate' => 'decimal:2',
+            'settings' => 'array',
         ];
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('logo')->singleFile();
+        $this->addMediaCollection('cover')->singleFile();
     }
 
     public function getSlugOptions(): SlugOptions
@@ -42,6 +53,11 @@ class Club extends Model implements HasMedia
         return SlugOptions::create()
             ->generateSlugsFrom(fn (Club $model) => $model->getTranslation('name', 'en'))
             ->saveSlugsTo('slug');
+    }
+
+    public function getRouteKeyName(): string
+    {
+        return 'slug';
     }
 
     public function city(): BelongsTo
@@ -82,5 +98,32 @@ class Club extends Model implements HasMedia
     public function commissionConfigs(): HasMany
     {
         return $this->hasMany(CommissionConfig::class);
+    }
+
+    public function followers(): HasMany
+    {
+        return $this->hasMany(ClubFollower::class);
+    }
+
+    public function followerUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'club_followers')
+            ->withPivot(['notify_updates', 'notify_events', 'notify_promotions'])
+            ->withTimestamps();
+    }
+
+    public function updates(): HasMany
+    {
+        return $this->hasMany(ClubUpdate::class);
+    }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(Event::class);
+    }
+
+    public function isFollowedBy(User $user): bool
+    {
+        return $this->followers()->where('user_id', $user->id)->exists();
     }
 }

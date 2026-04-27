@@ -22,26 +22,44 @@ class ClubApprovalService
         return $this->clubRepo->approve($club, $adminId);
     }
 
-    public function reject(Club $club, string $reason): Club
+    public function reject(Club $club, string $reason, ?int $adminId = null): Club
     {
         if ($club->status !== ClubStatus::PendingApproval) {
             throw new RuntimeException('Only clubs pending approval can be rejected.');
         }
 
-        return $this->clubRepo->reject($club, $reason);
+        return $this->clubRepo->update($club, [
+            'status' => ClubStatus::Rejected,
+            'rejection_reason' => $reason,
+            'rejected_at' => now(),
+            'rejected_by' => $adminId,
+        ]);
     }
 
-    public function suspend(Club $club): Club
+    public function suspend(Club $club, string $reason, ?int $adminId = null): Club
     {
-        return $this->clubRepo->update($club, ['status' => ClubStatus::Suspended]);
+        if ($club->status !== ClubStatus::Active) {
+            throw new RuntimeException('Only active clubs can be suspended.');
+        }
+
+        return $this->clubRepo->update($club, [
+            'status' => ClubStatus::Suspended,
+            'suspension_reason' => $reason,
+            'suspended_at' => now(),
+            'suspended_by' => $adminId,
+        ]);
     }
 
     public function reactivate(Club $club): Club
     {
-        if (! in_array($club->status, [ClubStatus::Inactive, ClubStatus::Suspended])) {
+        if (! in_array($club->status, [ClubStatus::Inactive, ClubStatus::Suspended], true)) {
             throw new RuntimeException('Only inactive or suspended clubs can be reactivated.');
         }
 
-        return $this->clubRepo->update($club, ['status' => ClubStatus::Active]);
+        return $this->clubRepo->update($club, [
+            'status' => ClubStatus::Active,
+            'suspension_reason' => null,
+            'unsuspended_at' => now(),
+        ]);
     }
 }

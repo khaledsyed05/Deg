@@ -14,11 +14,15 @@ class ListVenuesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'city_id'     => ['nullable', 'integer', 'exists:cities,id'],
+            'city_id' => ['nullable', 'integer', 'exists:cities,id'],
             'category_id' => ['nullable', 'integer', 'exists:venue_categories,id'],
-            'sport_id'    => ['nullable', 'integer', 'exists:sport_categories,id'],
-            'page'        => ['nullable', 'integer', 'min:1'],
-            'per_page'    => ['nullable', 'integer', 'min:1', 'max:100'],
+            'sport_id' => ['nullable', 'integer', 'exists:sport_categories,id'],
+            'min_price' => ['nullable', 'integer', 'min:0'],
+            'max_price' => ['nullable', 'integer', 'min:0', 'gte:min_price'],
+            'is_featured' => ['nullable', 'boolean'],
+            'sort_by' => ['nullable', 'string', 'in:price_asc,price_desc,rating,popular,newest'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
     }
 }

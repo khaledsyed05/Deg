@@ -40,4 +40,16 @@ return [
         'api_key' => env('WHATSAPP_SERVICE_API_KEY', ''),
     ],
 
+    'football_data' => [
+        'api_key' => env('FOOTBALL_DATA_API_KEY'),
+        'base_url' => env('FOOTBALL_DATA_BASE_URL', 'https://api.football-data.org/v4'),
+    ],
+
+    'api_sports' => [
+        'key_1' => env('API_SPORTS_KEY_1'),
+        'key_2' => env('API_SPORTS_KEY_2'),
+        'key_3' => env('API_SPORTS_KEY_3'),
+        'base_url' => env('API_SPORTS_BASE_URL', 'https://v3.football.api-sports.io'),
+    ],
+
 ];

@@ -15,6 +15,7 @@ class CancelBookingRequest extends FormRequest
     {
         return [
             'confirmed' => ['required', 'boolean', 'accepted'],
+            'reason' => ['nullable', 'string', 'max:500'],
         ];
     }
 

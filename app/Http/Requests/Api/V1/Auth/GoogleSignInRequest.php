@@ -14,8 +14,10 @@ class GoogleSignInRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id_token'  => ['required', 'string'],
+            'id_token' => ['required', 'string'],
+            'device_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'fcm_token' => ['nullable', 'string', 'max:500'],
+            'platform' => ['sometimes', 'nullable', 'string', 'in:ios,android'],
         ];
     }
 
