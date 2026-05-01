@@ -104,6 +104,19 @@ class PushNotificationService
                 'time' => (string) ($data['start_time'] ?? ''),
                 'amount' => number_format((float) ($data['amount'] ?? 0)),
                 'discount' => (string) ($data['discount'] ?? ''),
+                'club' => (string) ($data['club_name'] ?? ''),
+                'reason' => (string) ($data['reason'] ?? ''),
+                'home' => (string) ($data['home_team'] ?? ''),
+                'away' => (string) ($data['away_team'] ?? ''),
+                'team' => (string) ($data['team'] ?? ''),
+                'score' => (string) ($data['score'] ?? ''),
+                'minute' => (string) ($data['minute'] ?? ''),
+                'event' => (string) ($data['event_title'] ?? ''),
+                'window' => (string) ($data['window'] ?? ''),
+                'achievement' => (string) ($data['achievement_title'] ?? ''),
+                'inviter' => (string) ($data['inviter_name'] ?? ''),
+                'count' => (string) ($data['count'] ?? ''),
+                'severity' => (string) ($data['severity'] ?? ''),
             ];
 
             $title = __($titleKey, $replacements);

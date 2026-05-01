@@ -2,8 +2,8 @@
 
 namespace App\Jobs\Waitlist;
 
-use App\Jobs\Notification\SendFcmNotificationJob;
 use App\Repositories\Contracts\VenueWaitlistRepositoryInterface;
+use App\Services\Notification\PushNotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -26,8 +26,10 @@ class NotifyWaitlistJob implements ShouldQueue
         public int $durationMinutes,
     ) {}
 
-    public function handle(VenueWaitlistRepositoryInterface $waitlistRepo): void
-    {
+    public function handle(
+        VenueWaitlistRepositoryInterface $waitlistRepo,
+        PushNotificationService $push,
+    ): void {
         $entries = $waitlistRepo->findByVenueAndDate(
             $this->venueId,
             $this->bookingDate,
@@ -37,21 +39,15 @@ class NotifyWaitlistJob implements ShouldQueue
         foreach ($entries as $entry) {
             $user = $entry->user;
 
-            if (! $user || ! $user->fcm_token || ! $user->notifications_push_enabled) {
+            if (! $user) {
                 continue;
             }
 
-            SendFcmNotificationJob::dispatch(
-                $user->fcm_token,
-                title: 'الوقت المطلوب أصبح متاحاً!',
-                body: "الوقت الذي طلبت إشعارك عنه في {$this->bookingDate} الساعة {$this->startTime} أصبح متاحاً للحجز.",
-                data: [
-                    'type' => 'waitlist_available',
-                    'venue_id' => (string) $this->venueId,
-                    'booking_date' => $this->bookingDate,
-                    'start_time' => $this->startTime,
-                ],
-            );
+            $push->sendNotification($user, 'waitlist_available', [
+                'venue_id' => (string) $this->venueId,
+                'booking_date' => $this->bookingDate,
+                'start_time' => $this->startTime,
+            ]);
 
             $entry->update(['notified_at' => now()]);
         }

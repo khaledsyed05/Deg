@@ -2,6 +2,7 @@
 
 namespace App\Services\Team;
 
+use App\Jobs\Notification\TeamInvitationNotificationJob;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\User;
@@ -65,7 +66,7 @@ class TeamService
 
         $member = $team->inviteMember($userId, $inviter->id);
 
-        // TODO: dispatch App\Notifications\TeamInvitationNotification when created.
+        TeamInvitationNotificationJob::dispatch($team, $userId, $inviter->id);
 
         return ['success' => true, 'message' => 'تم إرسال الدعوة', 'member' => $member];
     }

@@ -65,6 +65,7 @@ use App\Services\Auth\FirebaseAuthService;
 use App\Services\Notification\BaileysService;
 use App\Services\Notification\FcmService;
 use App\Services\Notification\SmsService;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 
@@ -72,6 +73,10 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        if (is_dir(base_path('lang'))) {
+            $this->app->useLangPath(base_path('lang'));
+        }
+
         $this->app->singleton(SmsService::class, fn () => new SmsService(
             apiUrl: config('services.sms.url', ''),
             apiKey: config('services.sms.key', ''),
@@ -84,12 +89,13 @@ class AppServiceProvider extends ServiceProvider
         ));
 
         $this->app->singleton(FcmService::class, fn () => new FcmService(
-            projectId: config('services.firebase.project_id', ''),
-            serviceAccountJson: config('services.firebase.service_account', '{}'),
+            projectId: (string) config('services.firebase.project_id', ''),
+            credentialsPath: (string) config('services.firebase.credentials_path', ''),
+            serviceAccountJson: (string) config('services.firebase.service_account', ''),
         ));
 
         $this->app->singleton(FirebaseAuthService::class, fn () => new FirebaseAuthService(
-            projectId: config('services.firebase.project_id', ''),
+            projectId: (string) config('services.firebase.project_id', ''),
         ));
 
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
@@ -125,6 +131,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->warnIfFirebaseMisconfigured();
+
         Inertia::share([
             'auth' => fn () => [
                 'user' => request()->user() ? [
@@ -154,5 +162,23 @@ class AppServiceProvider extends ServiceProvider
                 ] : null;
             },
         ]);
+    }
+
+    private function warnIfFirebaseMisconfigured(): void
+    {
+        if ($this->app->runningInConsole() || $this->app->runningUnitTests()) {
+            return;
+        }
+
+        $projectId = (string) config('services.firebase.project_id', '');
+        $credentialsPath = (string) config('services.firebase.credentials_path', '');
+        $serviceAccountJson = (string) config('services.firebase.service_account', '');
+
+        $hasCredentials = ($credentialsPath !== '' && is_file($credentialsPath))
+            || ($serviceAccountJson !== '' && $serviceAccountJson !== '{}');
+
+        if ($projectId === '' || ! $hasCredentials) {
+            Log::warning('Firebase / FCM is not fully configured. Push notifications will fail. Run `php artisan firebase:check` for details.');
+        }
     }
 }

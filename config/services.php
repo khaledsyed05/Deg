@@ -52,4 +52,10 @@ return [
         'base_url' => env('API_SPORTS_BASE_URL', 'https://v3.football.api-sports.io'),
     ],
 
+    'firebase' => [
+        'project_id' => env('FIREBASE_PROJECT_ID'),
+        'credentials_path' => env('FIREBASE_CREDENTIALS', storage_path('app/firebase/service-account.json')),
+        'service_account' => env('FIREBASE_SERVICE_ACCOUNT'),
+    ],
+
 ];

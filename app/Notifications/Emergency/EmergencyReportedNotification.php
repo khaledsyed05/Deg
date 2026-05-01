@@ -3,6 +3,7 @@
 namespace App\Notifications\Emergency;
 
 use App\Models\Emergency\EmergencyReport;
+use App\Notifications\Channels\FcmChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -19,7 +20,7 @@ class EmergencyReportedNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', FcmChannel::class];
     }
 
     /**
@@ -52,5 +53,21 @@ class EmergencyReportedNotification extends Notification implements ShouldQueue
             'low' => 'منخفض',
             default => $severity,
         };
+    }
+
+    /**
+     * @return array{type: string, data: array<string, mixed>}
+     */
+    public function toFcm(object $notifiable): array
+    {
+        return [
+            'type' => 'emergency_reported',
+            'data' => [
+                'report_id' => (string) $this->report->id,
+                'severity' => $this->getSeverityLabel($this->report->severity),
+                'emergency_type' => (string) $this->report->type,
+                'venue_id' => (string) ($this->report->venue_id ?? ''),
+            ],
+        ];
     }
 }

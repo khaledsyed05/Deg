@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Admin\V1\SettlementController;
 use App\Http\Controllers\Api\Club\V1\BookingController as ClubBookingController;
 use App\Http\Controllers\Api\Club\V1\StaffController;
 use App\Http\Controllers\Api\Club\V1\VenueController as ClubVenueController;
+use App\Http\Controllers\Api\V1\Admin\AppVersionController;
 use App\Http\Controllers\Api\V1\Admin\FinancialController;
 use App\Http\Controllers\Api\V1\Admin\RefundController;
 use App\Http\Controllers\Api\V1\Admin\ReportController;
@@ -75,7 +76,6 @@ Route::prefix('v1')->group(function () {
 
     // Auth — public
     Route::prefix('auth')->group(function () {
-        Route::post('register', [AuthController::class, 'register']);
         Route::post('otp/send', [AuthController::class, 'sendOtp']);
         Route::post('otp/verify', [AuthController::class, 'verifyOtp']);
         Route::post('otp/resend', [AuthController::class, 'resendOtp']);
@@ -165,6 +165,7 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
 
         // Auth
+        Route::post('auth/complete-profile', [AuthController::class, 'completeProfile']);
         Route::post('auth/refresh', [AuthController::class, 'refresh']);
         Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::post('auth/logout-all', [AuthController::class, 'logoutAll']);
@@ -527,6 +528,14 @@ Route::prefix('admin/v1')->middleware(['auth:sanctum'])->group(function () {
         Route::post('app/feature-flags/{key}', [SystemController::class, 'toggleFeatureFlag']);
         Route::post('notifications/broadcast', [SystemController::class, 'broadcast']);
         Route::get('audit-log', [SystemController::class, 'auditLog']);
+
+        // App Versions
+        Route::get('app-versions', [AppVersionController::class, 'index']);
+        Route::post('app-versions', [AppVersionController::class, 'store']);
+        Route::get('app-versions/{id}', [AppVersionController::class, 'show'])->whereNumber('id');
+        Route::put('app-versions/{id}', [AppVersionController::class, 'update'])->whereNumber('id');
+        Route::delete('app-versions/{id}', [AppVersionController::class, 'destroy'])->whereNumber('id');
+        Route::post('app-versions/{id}/activate', [AppVersionController::class, 'activate'])->whereNumber('id');
     });
 });
 

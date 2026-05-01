@@ -7,6 +7,8 @@ use App\Enums\PaymentFlowType;
 use App\Enums\PaymentProvider;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
+use App\Jobs\Notification\PaymentRetryNotificationJob;
+use App\Jobs\Notification\RefundCompletedNotificationJob;
 use App\Models\Payment;
 use App\Services\Payment\PaymentInitiationService;
 use Carbon\CarbonInterface;
@@ -128,7 +130,9 @@ class PaymentController extends Controller
             ->withProperties(['provider' => $provider])
             ->log('payment_retried');
 
-        // TODO: if ($data['send_notification'] ?? false) dispatch(new SendPaymentRetryNotification($payment->fresh()));
+        if ($data['send_notification'] ?? false) {
+            PaymentRetryNotificationJob::dispatch($payment->fresh());
+        }
 
         return redirect()->route('admin.payments.show', $payment)
             ->with('flash_key', 'paymentRetried')
@@ -177,7 +181,9 @@ class PaymentController extends Controller
         // refunded. When gateway refund endpoints are available, wire them
         // here via a match($payment->provider) => $gateway->refund(...) block.
 
-        // TODO: if ($data['send_notification'] ?? false) dispatch(new SendRefundNotification($payment));
+        if ($data['send_notification'] ?? false) {
+            RefundCompletedNotificationJob::dispatch($payment->fresh());
+        }
 
         return redirect()->route('admin.payments.show', $payment)
             ->with('flash_key', 'refundInitiated')

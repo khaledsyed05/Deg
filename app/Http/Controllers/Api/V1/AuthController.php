@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Auth\GoogleSignInRequest;
 use App\Http\Requests\Api\V1\Auth\LoginOtpSendRequest;
 use App\Http\Requests\Api\V1\Auth\LoginOtpVerifyRequest;
-use App\Http\Requests\Api\V1\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
@@ -24,25 +23,6 @@ class AuthController extends Controller
         private OtpService $otpService,
         private FirebaseAuthService $firebaseAuth,
     ) {}
-
-    /**
-     * Register a new user (password flow).
-     */
-    public function register(RegisterRequest $request): JsonResponse
-    {
-        $user = $this->userRepo->create($request->validated());
-        $user->assignRole('player');
-
-        $token = $user->createToken('mobile-app')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'user' => new UserResource($user),
-                'token' => $token,
-            ],
-        ], 201);
-    }
 
     /**
      * Send OTP to the given phone via WhatsApp/SMS.
@@ -154,15 +134,15 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => __($isNewUser ? 'auth.registered' : 'auth.logged_in'),
             'data' => [
-                'auth_outcome' => $isNewUser ? 'registered' : 'logged_in',
-                'requires_profile_completion' => is_null($user->name) || is_null($user->default_city_id),
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-                'expires_in' => 31536000,
-                'user' => new UserResource($user),
-                'token' => $token,
+                'user_exists'        => ! $isNewUser,
+                'access_token'       => $token,
+                'token_type'         => 'Bearer',
+                'expires_in'         => 31536000,
+                'user'               => ! $isNewUser ? new UserResource($user) : null,
+                'onboarding_prefill' => $isNewUser
+                    ? ['name' => null, 'email' => null, 'avatar_url' => null]
+                    : null,
             ],
         ]);
     }
@@ -241,21 +221,44 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => __($isNewUser ? 'auth.registered' : 'auth.logged_in'),
             'data' => [
-                'auth_outcome' => $isNewUser ? 'registered' : 'logged_in',
-                'requires_profile_completion' => is_null($user->name) || is_null($user->phone_number) || is_null($user->default_city_id),
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-                'expires_in' => 31536000,
-                'user' => new UserResource($user),
-                'token' => $token,
+                'user_exists'        => ! $isNewUser,
+                'access_token'       => $token,
+                'token_type'         => 'Bearer',
+                'expires_in'         => 31536000,
+                'user'               => ! $isNewUser ? new UserResource($user) : null,
                 'onboarding_prefill' => $isNewUser ? [
-                    'name' => $claims['name'] ?? null,
-                    'email' => $claims['email'] ?? null,
+                    'name'       => $claims['name'] ?? null,
+                    'email'      => $claims['email'] ?? null,
                     'avatar_url' => $claims['picture'] ?? null,
                 ] : null,
             ],
+        ]);
+    }
+
+    public function completeProfile(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name'          => ['required', 'string', 'max:100'],
+            'date_of_birth' => ['required', 'date', 'before:today', 'after:'.now()->subYears(120)->toDateString()],
+        ]);
+
+        $user = $request->user();
+        $user->update([
+            'name'                    => $data['name'],
+            'date_of_birth'           => $data['date_of_birth'],
+            'onboarding_completed_at' => now(),
+        ]);
+
+        activity()
+            ->causedBy($user)
+            ->performedOn($user)
+            ->event('profile_completed')
+            ->log('User completed profile');
+
+        return response()->json([
+            'success' => true,
+            'data'    => ['user' => new UserResource($user->fresh())],
         ]);
     }
 

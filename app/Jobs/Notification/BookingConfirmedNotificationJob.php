@@ -3,7 +3,7 @@
 namespace App\Jobs\Notification;
 
 use App\Models\Booking;
-use App\Services\Notification\FcmService;
+use App\Services\Notification\PushNotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -23,24 +23,21 @@ class BookingConfirmedNotificationJob implements ShouldQueue
         public Booking $booking,
     ) {}
 
-    public function handle(FcmService $fcm): void
+    public function handle(PushNotificationService $push): void
     {
         $user = $this->booking->user;
 
-        if (! $user || ! $user->fcm_token || ! $user->notifications_push_enabled) {
+        if (! $user) {
             return;
         }
 
-        $fcm->sendToToken(
-            $user->fcm_token,
-            title: 'تم تأكيد حجزك ✅',
-            body: "تم تأكيد حجزك بتاريخ {$this->booking->booking_date} الساعة {$this->booking->start_time}",
-            data: [
-                'type' => 'booking_confirmed',
-                'booking_id' => (string) $this->booking->id,
-                'booking_code' => $this->booking->booking_code,
-            ],
-        );
+        $push->sendNotification($user, 'booking_confirmed', [
+            'venue_name' => $this->booking->venue?->getTranslation('name', $user->getLanguage()) ?? '',
+            'booking_date' => (string) $this->booking->booking_date,
+            'start_time' => (string) $this->booking->start_time,
+            'booking_id' => (string) $this->booking->id,
+            'booking_code' => (string) $this->booking->booking_code,
+        ]);
     }
 
     public function failed(\Throwable $exception): void

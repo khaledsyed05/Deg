@@ -2,6 +2,7 @@
 
 namespace App\Notifications\Football;
 
+use App\Notifications\Channels\FcmChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -17,7 +18,7 @@ class MatchReminderNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', FcmChannel::class];
     }
 
     public function toArray(object $notifiable): array
@@ -33,6 +34,22 @@ class MatchReminderNotification extends Notification implements ShouldQueue
             'reminder_type' => $this->reminderType,
             'match_external_id' => (string) ($this->match['id'] ?? ''),
             'match' => $this->match,
+        ];
+    }
+
+    /**
+     * @return array{type: string, data: array<string, mixed>}
+     */
+    public function toFcm(object $notifiable): array
+    {
+        return [
+            'type' => 'match_reminder',
+            'data' => [
+                'home_team' => $this->match['homeTeam']['name'] ?? '',
+                'away_team' => $this->match['awayTeam']['name'] ?? '',
+                'reminder_type' => $this->reminderType,
+                'match_external_id' => (string) ($this->match['id'] ?? ''),
+            ],
         ];
     }
 }

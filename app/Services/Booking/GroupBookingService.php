@@ -2,6 +2,7 @@
 
 namespace App\Services\Booking;
 
+use App\Jobs\Notification\GroupBookingInviteNotificationJob;
 use App\Models\Booking;
 use App\Models\BookingParticipant;
 use App\Models\User;
@@ -129,7 +130,7 @@ class GroupBookingService
 
             $invited[] = $this->addParticipant($booking, $userId, $perPlayer);
 
-            // TODO: dispatch App\Notifications\BookingInvitationNotification when created.
+            GroupBookingInviteNotificationJob::dispatch($booking, $userId);
         }
 
         return $invited;

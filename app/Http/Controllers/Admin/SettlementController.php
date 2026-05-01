@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
+use App\Jobs\Notification\SettlementPaidNotificationJob;
 use App\Models\Settlement;
 use App\Repositories\Contracts\ClubRepositoryInterface;
 use App\Repositories\Contracts\SettlementRepositoryInterface;
@@ -131,7 +132,9 @@ class SettlementController extends Controller
             ])
             ->log('settlement_marked_as_paid');
 
-        // TODO: if ($data['send_notification'] ?? false) dispatch(new SendSettlementPaidNotification($settlement));
+        if ($data['send_notification'] ?? false) {
+            SettlementPaidNotificationJob::dispatch($settlement->fresh());
+        }
 
         return redirect()->route('admin.settlements.show', $settlement)
             ->with('flash_key', 'settlementPaid')

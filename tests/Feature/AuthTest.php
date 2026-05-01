@@ -12,24 +12,6 @@ class AuthTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    public function test_user_can_register_and_receive_token(): void
-    {
-        $response = $this->postJson('/api/v1/auth/register', [
-            'name' => 'أحمد محمد',
-            'phone_number' => '+963944100001',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
-        ]);
-
-        $response->assertCreated()
-            ->assertJsonStructure([
-                'success',
-                'data' => ['user', 'token'],
-            ]);
-
-        $this->assertNotEmpty($response->json('data.token'));
-    }
-
     public function test_authenticated_user_can_logout(): void
     {
         $user = User::factory()->create();
@@ -75,9 +57,9 @@ class AuthTest extends TestCase
         $response->assertOk()
             ->assertJsonStructure([
                 'success',
-                'data' => ['auth_outcome', 'access_token', 'user', 'onboarding_prefill'],
+                'data' => ['user_exists', 'access_token', 'onboarding_prefill'],
             ])
-            ->assertJsonPath('data.auth_outcome', 'registered')
+            ->assertJsonPath('data.user_exists', false)
             ->assertJsonPath('data.onboarding_prefill.avatar_url', 'https://example.com/avatar.jpg');
 
         $this->assertDatabaseHas('users', [

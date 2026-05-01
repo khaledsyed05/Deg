@@ -15,19 +15,24 @@ class LoginOtpVerifyRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'phone'     => ['required', 'string', new Phone('SY')],
-            'otp'       => ['required', 'string', 'digits:6'],
-            'fcm_token' => ['nullable', 'string', 'max:500'],
+            'phone'          => ['required', 'string', new Phone('SY')],
+            'otp'            => ['required', 'string', 'digits:5'],
+            'challenge_uuid' => ['required', 'string', 'uuid'],
+            'fcm_token'      => ['nullable', 'string', 'max:500'],
+            'device_id'      => ['sometimes', 'nullable', 'string', 'max:255'],
+            'platform'       => ['sometimes', 'nullable', 'string', 'in:ios,android'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'phone.required' => __('validation.required', ['attribute' => __('validation.attributes.phone')]),
-            'phone.phone'    => __('validation.phone'),
-            'otp.required'   => __('validation.required', ['attribute' => __('validation.attributes.otp')]),
-            'otp.digits'     => __('validation.digits', ['attribute' => __('validation.attributes.otp'), 'digits' => 6]),
+            'phone.required'          => __('validation.required', ['attribute' => __('validation.attributes.phone')]),
+            'phone.phone'             => __('validation.phone'),
+            'otp.required'            => __('validation.required', ['attribute' => __('validation.attributes.otp')]),
+            'otp.digits'              => __('validation.digits', ['attribute' => __('validation.attributes.otp'), 'digits' => 5]),
+            'challenge_uuid.required' => __('validation.required', ['attribute' => 'challenge_uuid']),
+            'challenge_uuid.uuid'     => __('validation.uuid', ['attribute' => 'challenge_uuid']),
         ];
     }
 

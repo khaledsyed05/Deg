@@ -48,6 +48,7 @@ class User extends Authenticatable implements HasMedia
             'notifications_push_enabled' => 'boolean',
             'notifications_sms_enabled' => 'boolean',
             'notifications_reminders_enabled' => 'boolean',
+            'date_of_birth' => 'date',
             'privacy_settings' => 'array',
             'preferences' => 'array',
             'interests' => 'array',

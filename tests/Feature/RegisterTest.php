@@ -10,62 +10,100 @@ class RegisterTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    /** @var array<string, string> */
-    private array $valid = [
-        'name'                  => 'Test User',
-        'phone_number'          => '+963944123456',
-        'password'              => 'password123',
-        'password_confirmation' => 'password123',
-    ];
-
-    public function test_registers_a_user_successfully_and_returns_token_and_user_data(): void
+    public function test_complete_profile_requires_auth(): void
     {
-        $this->postJson('/api/v1/auth/register', $this->valid)
-            ->assertCreated()
-            ->assertJsonStructure([
-                'success',
-                'data' => ['user', 'token'],
-            ]);
-
-        $this->assertDatabaseHas('users', ['phone_number' => '+963944123456']);
+        $this->postJson('/api/v1/auth/complete-profile', [
+            'name' => 'أحمد',
+            'date_of_birth' => '1995-06-15',
+        ])->assertUnauthorized();
     }
 
-    public function test_duplicate_phone_number_returns_validation_error(): void
+    public function test_complete_profile_sets_name_and_dob(): void
     {
-        User::factory()->create(['phone_number' => '+963944123456']);
+        $user = User::factory()->create(['name' => null, 'date_of_birth' => null]);
+        $token = $user->createToken('mobile-app')->plainTextToken;
 
-        $this->postJson('/api/v1/auth/register', $this->valid)
+        $this->withToken($token)
+            ->postJson('/api/v1/auth/complete-profile', [
+                'name' => 'أحمد محمد',
+                'date_of_birth' => '1995-06-15',
+            ])
+            ->assertOk()
+            ->assertJsonStructure(['success', 'data' => ['user']])
+            ->assertJsonPath('data.user.name', 'أحمد محمد')
+            ->assertJsonPath('data.user.date_of_birth', '1995-06-15');
+
+        $this->assertDatabaseHas('users', ['id' => $user->id, 'name' => 'أحمد محمد']);
+        $this->assertSame('1995-06-15', $user->fresh()->date_of_birth->toDateString());
+    }
+
+    public function test_complete_profile_requires_name(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('mobile-app')->plainTextToken;
+
+        $this->withToken($token)
+            ->postJson('/api/v1/auth/complete-profile', [
+                'date_of_birth' => '1995-06-15',
+            ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['phone_number']);
+            ->assertJsonValidationErrors(['name']);
     }
 
-    public function test_invalid_phone_number_returns_validation_error(): void
+    public function test_complete_profile_requires_date_of_birth(): void
     {
-        $this->postJson('/api/v1/auth/register', array_merge($this->valid, ['phone_number' => 'not-a-phone']))
+        $user = User::factory()->create();
+        $token = $user->createToken('mobile-app')->plainTextToken;
+
+        $this->withToken($token)
+            ->postJson('/api/v1/auth/complete-profile', [
+                'name' => 'أحمد محمد',
+            ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['phone_number']);
+            ->assertJsonValidationErrors(['date_of_birth']);
     }
 
-    public function test_password_confirmation_mismatch_returns_validation_error(): void
+    public function test_complete_profile_rejects_future_dob(): void
     {
-        $this->postJson('/api/v1/auth/register', array_merge($this->valid, ['password_confirmation' => 'wrong']))
+        $user = User::factory()->create();
+        $token = $user->createToken('mobile-app')->plainTextToken;
+
+        $this->withToken($token)
+            ->postJson('/api/v1/auth/complete-profile', [
+                'name' => 'أحمد محمد',
+                'date_of_birth' => now()->addDay()->toDateString(),
+            ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['password']);
+            ->assertJsonValidationErrors(['date_of_birth']);
     }
 
-    public function test_registered_user_has_player_spatie_role(): void
+    public function test_complete_profile_sets_onboarding_completed_at(): void
     {
-        $this->postJson('/api/v1/auth/register', $this->valid)->assertCreated();
+        $user = User::factory()->create(['onboarding_completed_at' => null]);
+        $token = $user->createToken('mobile-app')->plainTextToken;
 
-        $user = User::where('phone_number', '+963944123456')->first();
-        $this->assertTrue($user->hasRole('player'));
+        $this->withToken($token)
+            ->postJson('/api/v1/auth/complete-profile', [
+                'name' => 'أحمد محمد',
+                'date_of_birth' => '1990-01-01',
+            ])
+            ->assertOk();
+
+        $this->assertNotNull($user->fresh()->onboarding_completed_at);
     }
 
-    public function test_response_does_not_expose_sensitive_fields(): void
+    public function test_complete_profile_response_does_not_expose_password(): void
     {
-        $response = $this->postJson('/api/v1/auth/register', $this->valid)->assertCreated();
+        $user = User::factory()->create();
+        $token = $user->createToken('mobile-app')->plainTextToken;
 
-        $userData = $response->json('data.user');
-        $this->assertArrayNotHasKey('password', $userData);
+        $response = $this->withToken($token)
+            ->postJson('/api/v1/auth/complete-profile', [
+                'name' => 'أحمد محمد',
+                'date_of_birth' => '1990-01-01',
+            ])
+            ->assertOk();
+
+        $this->assertArrayNotHasKey('password', $response->json('data.user'));
     }
 }

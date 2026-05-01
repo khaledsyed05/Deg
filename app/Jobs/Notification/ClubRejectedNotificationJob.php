@@ -3,7 +3,7 @@
 namespace App\Jobs\Notification;
 
 use App\Models\Club;
-use App\Services\Notification\FcmService;
+use App\Services\Notification\PushNotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -23,25 +23,19 @@ class ClubRejectedNotificationJob implements ShouldQueue
         public Club $club,
     ) {}
 
-    public function handle(FcmService $fcm): void
+    public function handle(PushNotificationService $push): void
     {
         $owner = $this->club->owner;
 
-        if (! $owner || ! $owner->fcm_token || ! $owner->notifications_push_enabled) {
+        if (! $owner) {
             return;
         }
 
-        $clubName = $this->club->getTranslation('name', 'ar');
-
-        $fcm->sendToToken(
-            $owner->fcm_token,
-            title: 'تم رفض طلب نادي',
-            body: "تم رفض طلب {$clubName}. السبب: {$this->club->rejection_reason}",
-            data: [
-                'type' => 'club_rejected',
-                'club_id' => (string) $this->club->id,
-            ],
-        );
+        $push->sendNotification($owner, 'club_rejected', [
+            'club_name' => (string) $this->club->getTranslation('name', $owner->getLanguage()),
+            'reason' => (string) $this->club->rejection_reason,
+            'club_id' => (string) $this->club->id,
+        ]);
     }
 
     public function failed(\Throwable $exception): void

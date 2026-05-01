@@ -3,7 +3,7 @@
 namespace App\Jobs\Notification;
 
 use App\Models\Booking;
-use App\Services\Notification\FcmService;
+use App\Services\Notification\PushNotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -24,29 +24,25 @@ class BookingReminderJob implements ShouldQueue
         public int $hoursBeforeStart,
     ) {}
 
-    public function handle(FcmService $fcm): void
+    public function handle(PushNotificationService $push): void
     {
-        // Skip if booking is no longer active
         if (! in_array($this->booking->status->value, ['confirmed', 'scheduled'])) {
             return;
         }
 
         $user = $this->booking->user;
 
-        if (! $user || ! $user->fcm_token || ! $user->notifications_reminders_enabled) {
+        if (! $user) {
             return;
         }
 
-        $fcm->sendToToken(
-            $user->fcm_token,
-            title: "تذكير: حجزك بعد {$this->hoursBeforeStart} ساعة",
-            body: "حجزك في {$this->booking->start_time} اليوم",
-            data: [
-                'type' => 'booking_reminder',
-                'booking_id' => (string) $this->booking->id,
-                'hours_before' => (string) $this->hoursBeforeStart,
-            ],
-        );
+        $push->sendNotification($user, 'booking_reminder', [
+            'venue_name' => $this->booking->venue?->getTranslation('name', $user->getLanguage()) ?? '',
+            'booking_date' => (string) $this->booking->booking_date,
+            'start_time' => (string) $this->booking->start_time,
+            'booking_id' => (string) $this->booking->id,
+            'hours_before' => (string) $this->hoursBeforeStart,
+        ]);
     }
 
     public function failed(\Throwable $exception): void
