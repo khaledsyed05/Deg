@@ -6,7 +6,7 @@
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
-        "php": "^8.3",
+        "php": "^8.3 <8.4",
         "dedoc/scramble": "^0.13.20",
         "inertiajs/inertia-laravel": "^3.0",
         "laravel/framework": "^13.0",
@@ -18,7 +18,7 @@
         "propaganistas/laravel-phone": "^6.0",
         "simplesoftwareio/simple-qrcode": "^4.2",
         "spatie/eloquent-sortable": "*",
-        "spatie/laravel-activitylog": "^5.0",
+        "spatie/laravel-activitylog": "^4.12",
         "spatie/laravel-backup": "^10.2",
         "spatie/laravel-medialibrary": "^11.21",
         "spatie/laravel-model-states": "^2.13",
@@ -101,8 +101,50 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "platform": {
+            "php": "8.3.6"
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "repositories": [
+        {
+            "type": "package",
+            "package": {
+                "name": "spatie/laravel-model-states",
+                "version": "2.14.1.99",
+                "type": "library",
+                "license": "MIT",
+                "require": {
+                    "php": "^8.3 <8.5",
+                    "ext-json": "*",
+                    "facade/ignition-contracts": "^1.0.2|^2.0",
+                    "illuminate/contracts": "^12.0|^13.0",
+                    "illuminate/database": "^12.0|^13.0",
+                    "illuminate/support": "^12.0|^13.0",
+                    "spatie/laravel-package-tools": "^1.19",
+                    "spatie/php-attribute-reader": "^1.0",
+                    "spatie/php-structure-discoverer": "^2.3.1"
+                },
+                "autoload": {
+                    "psr-4": {
+                        "Spatie\\ModelStates\\": "src/"
+                    }
+                },
+                "extra": {
+                    "laravel": {
+                        "providers": [
+                            "Spatie\\ModelStates\\ModelStatesServiceProvider"
+                        ]
+                    }
+                },
+                "dist": {
+                    "type": "zip",
+                    "url": "https://api.github.com/repos/spatie/laravel-model-states/zipball/2.14.1",
+                    "reference": "2.14.1"
+                }
+            }
+        }
+    ]
 }
