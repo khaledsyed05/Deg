@@ -64,3 +64,43 @@ installed. The existing test helpers all act-as via the `sanctum` guard.
 **Rationale:** Spatie Permission is installed, the seeder runs before every
 test, and the existing helpers already rely on these role names.
 **Files affected:** `tests/MobileIntegrationTest.php`.
+
+---
+
+## 2026-05-05 — Sprint 0 — Backlog quick-wins audit: items not present
+
+**Decision:** All eight "Sprint-1 discovery" backlog items in the prompt's
+§Backlog Quick Wins were verified absent from the current codebase. No
+code-level fixes were applied; this entry documents the audit so the items
+can be retired from future sprint backlogs unless the code regresses.
+**Rationale:** The backlog references symbols that do not exist on this
+branch — likely carried over from a prior or sibling codebase. Specific
+findings:
+
+- **`SellerController` hardcoded English** — no file in `app/` matches
+  `*seller*` (case-insensitive). Nothing to translate.
+- **Arabic typos `المفدخل` / `يفرجى`** — `grep -r` across `app/`,
+  `resources/`, `lang/`, `database/` returns zero matches.
+- **`ServiceCreateEndpointTest` vs `CategoryListResource`** — neither file
+  exists. The only `*Service*Test.php` files belong to booking-availability
+  services (`AvailabilityServiceTest`, `AvailableSlotsServiceTest`,
+  `BookingCreationServiceTest`, `Notification/FcmServiceTest`,
+  `PushNotificationServiceTest`) — none of them assert against a category
+  resource.
+- **`ServiceController` magic `id=1` filter** — no `ServiceController`
+  exists in `app/Http/Controllers/` (or any subdirectory).
+- **`Lang` trait dead code** — no `Lang` trait exists in `app/`. `grep -rn
+  "trait Lang"` returns nothing; `grep -rn "use .*\\Lang;"` (non-Illuminate)
+  returns nothing.
+- **`ApiController:27` deprecated code** — `app/Http/Controllers/ApiController.php`
+  does not exist. The base controller (`Controller.php`) is 10 lines and
+  uses only `Illuminate\Foundation\Auth\Access\AuthorizesRequests`. The
+  controller-side envelope helper is the `App\Http\Traits\ApiResponse`
+  trait.
+- **"Premature end of PHP" investigation** — `grep -r` across all log
+  files in `storage/logs/` and across `app/` returns zero hits.
+- **`JobCompanyLogoTest` `seller_logo_url`** — no `JobCompanyLogoTest.php`
+  exists; `seller_logo_url` is not referenced anywhere in `app/` or
+  `tests/`.
+
+**Files affected:** none (audit only).
