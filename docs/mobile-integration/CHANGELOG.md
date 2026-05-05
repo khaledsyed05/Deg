@@ -149,3 +149,29 @@ controllers diverge from the spec's response envelope.
 that was a noise / inherited bug is now green; only the deliberate
 verification probes remain as red signal.
 **Files affected:** none (re-run only).
+
+---
+
+## 2026-05-05 — Sprint 2 — Phase A1: envelope-helper audit
+
+**Decision:** 55 controller files already `use App\Http\Traits\ApiResponse`;
+54 controller files return JSON via `response()->json([...])` or raw
+`Resource::collection(...)`. Phase B targets the latter cohort, but
+will also revisit the former because some users of the trait still
+combine it with bespoke `response()->json` calls in adjacent methods.
+**Rationale:** Establishes the size of the work.
+**Files affected:** none (audit only).
+
+---
+
+## 2026-05-05 — Sprint 2 — Phase A2: non-mobile API consumers
+
+**Decision:** Mobile envelope changes can break freely — no
+backward-compatibility shim is needed.
+**Rationale:** `routes/web.php` only routes the admin dashboard (no
+shared API consumption). `grep -rn "/api/v1" resources/` returns no
+hits. The Inertia + Blade dashboard talks to its own admin
+controllers (different paths). The only consumer of `/api/v1/*` is
+the mobile app, which is still mock-first per `BACKEND_REQUIREMENTS.md`
+Phase 9 — so contract changes are absorbed by mobile re-mocking.
+**Files affected:** none (audit only).
