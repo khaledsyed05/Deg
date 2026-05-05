@@ -97,10 +97,7 @@ class ProfileController extends Controller
     {
         auth()->user()->clearMediaCollection('avatar');
 
-        return response()->json([
-            'success' => true,
-            'message' => __('auth.avatar_deleted'),
-        ]);
+        return $this->noContent(__('auth.avatar_deleted'));
     }
 
     public function initiatePhoneChange(InitiatePhoneChangeRequest $request, PhoneChangeService $service): JsonResponse

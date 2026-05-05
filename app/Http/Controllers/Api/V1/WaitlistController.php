@@ -28,10 +28,7 @@ class WaitlistController extends Controller
     {
         $entries = $this->waitlistRepo->findForUser(auth()->id());
 
-        return response()->json([
-            'success' => true,
-            'data' => WaitlistResource::collection($entries),
-        ]);
+        return $this->success(WaitlistResource::collection($entries));
     }
 
     /**
