@@ -81,6 +81,11 @@ class Booking extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function walletTransaction(): BelongsTo
+    {
+        return $this->belongsTo(WalletTransaction::class, 'wallet_transaction_id');
+    }
+
     public function review(): HasOne
     {
         return $this->hasOne(Review::class);

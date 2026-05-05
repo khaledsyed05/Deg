@@ -24,6 +24,12 @@ class WalletTransaction extends Model
         ];
     }
 
+    public function booking(): BelongsTo
+    {
+        return $this->belongsTo(Booking::class, 'reference_id')
+            ->where('reference_type', Booking::class);
+    }
+
     public function wallet(): BelongsTo
     {
         return $this->belongsTo(Wallet::class);
