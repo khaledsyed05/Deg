@@ -9,13 +9,16 @@
 
 | Outcome | Count | % |
 |---|---|---|
-| ✅ Match (test passes, envelope correct, status as expected) | 73 | 100% |
+| ✅ Match (test passes, envelope correct, status as expected) | 74 | 100% |
 | ⚠️ Minor mismatch (envelope OK, data field divergence) | 0 | 0% |
 | 🔴 Major mismatch (envelope wrong, or 4xx/5xx where 200 expected) | 0 | 0% |
 | ⏸️ Skipped | 0 | 0% |
-| **Total** | **73** | **100%** |
+| **Total** | **74** | **100%** |
 
-(Sprint 1 baseline: 36 ✅ / 37 🔴. Sprint 2 took the 37 reds to zero.)
+(Sprint 1 baseline: 36 ✅ / 37 🔴. Sprint 2 took the 37 reds to zero.
+Sprint 3 adds `POST /wallet/pay-booking` (+1) and upgrades the four
+existing wallet endpoints from "envelope-only" to "data-shape
+verified".)
 
 ## What changed in Sprint 2
 
@@ -132,15 +135,16 @@ indicate full match unless a row carries a Sprint-2 status note.
 | `GET /notifications/unread` | ✅ | unchanged |
 | `PUT /notifications/{id}/read`, `read-all`, `DELETE /notifications/{id}` | ✅ | **fixed** (404 envelope wrapped) |
 
-### Phase 8: Wallet + Coupons (5 endpoints)
+### Phase 8: Wallet + Coupons (6 endpoints — was 5; +pay-booking in Sprint 3)
 
-| Method + Path | Outcome | Sprint 2 status |
+| Method + Path | Outcome | Sprint status |
 |---|---|---|
-| `GET /wallet/account` | ✅ | **fixed** (404 envelope wrapped) |
-| `GET /wallet/transactions` | ✅ | **fixed** (paginated()) |
-| `GET /wallet/settings` | ✅ | **fixed** |
-| `PUT /wallet/settings` | ✅ | **fixed** |
-| `POST /wallet/topup` | ✅ | unchanged |
+| `GET /wallet/account` | ✅ data-shape | **Sprint 3 verified.** Routed via `WalletAccountResource`; spec-named keys (`locked_amount`, `available_balance`, `auto_topup` block). |
+| `GET /wallet/transactions` | ✅ data-shape | **Sprint 3 verified.** `WalletTransactionResource` emits the documented per-row shape. |
+| `GET /wallet/settings` | ✅ data-shape | **Sprint 3 built + verified.** Reads from `wallets.settings` JSON. |
+| `PUT /wallet/settings` | ✅ data-shape | **Sprint 3 built + verified.** Validates conditional auto_topup fields. |
+| `POST /wallet/topup` | ✅ envelope | unchanged |
+| `POST /wallet/pay-booking` | ✅ end-to-end | **Sprint 3 NEW.** Atomic + idempotent, 13 dedicated tests. |
 
 ### Phase 9: Teams + Sports Profile (5 endpoints)
 

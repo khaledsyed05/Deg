@@ -189,6 +189,31 @@ either use the trait or let exceptions propagate.
 
 ---
 
+## 2026-05-05 — Sprint 3 — Wallet API summary
+
+**Decision:** Sprint 3 (Wallet API) closed with the 4 spec-named
+wallet endpoints data-shape verified, the new
+`POST /wallet/pay-booking` live and atomic + idempotent, and a
+reusable `App\Support\Idempotency` primitive available for future
+sprints. Auto-topup execution is intentionally deferred to
+Sprint 8.
+
+**Rationale:** Wallet operations are the only place in the integration
+plan where a missed test case has a direct path to financial loss.
+The 13-test suite in `tests/Feature/Wallet/PayBookingTest.php` is
+the gold standard the prompt asked for.
+
+**Files affected:** 3 new migrations, 2 new resources
+(WalletAccountResource, WalletTransactionResource), 2 new exceptions
+(InsufficientBalance, BookingNotPayable), 1 new service
+(PayBookingService), 1 new request (PayBookingRequest, plus
+UpdateWalletSettingsRequest), 1 new support class
+(`App\Support\Idempotency`), 1 stub job (CheckAutoTopupJob),
+3 new lang files, controller + routes updates, BookingFactory state
+extension, and the four mobile-integration docs.
+
+---
+
 ## 2026-05-05 — Sprint 2 — Phase A2: non-mobile API consumers
 
 **Decision:** Mobile envelope changes can break freely — no

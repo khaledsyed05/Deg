@@ -186,6 +186,10 @@ ownership / notes.
   `Api\V1\WalletController@updateSettings`
 - `POST /api/v1/wallet/topup` —
   `Api\V1\WalletController@topup`
+- `POST /api/v1/wallet/pay-booking` —
+  `Api\V1\WalletController@payBooking` (new in Sprint 3 — atomic +
+  idempotent; consumes `App\Services\Wallet\PayBookingService` and
+  the `App\Support\Idempotency` primitive).
 - `POST /api/v1/wallet/topup/verify` —
   `Api\V1\WalletController@verifyTopup`
 - `POST /api/v1/wallet/topup/resend-otp` —

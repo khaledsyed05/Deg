@@ -162,9 +162,29 @@ recommended action and who owns it?
   Canonical `/cities`, `/cities/{id}`, `/cities/{id}/neighborhoods`,
   `/venues/clusters` registered; `/api/v1/geography/...` aliases
   retained for one sprint.
-- **Finding 6 — `/auth/register` route missing.** **Deferred to
-  Sprint 3.** Test now asserts the canonical 404 envelope so the
-  suite is green; Sprint 3 owns the spec/code reconciliation.
+- **Finding 6 — `/auth/register` route missing.** **Deferred again
+  to Sprint 4 / Auth-only sprint.** Sprint 3 reaffirms the
+  OTP-only flow per discovery findings; the spec mandates a
+  /register endpoint that the codebase intentionally omits. Not
+  reconciled this sprint — test asserts the canonical 404
+  envelope as a placeholder.
 - **Finding 7 — Chat endpoints don't exist.** **Deferred to Sprint
   7.** Until then the canonical 404 envelope applies (verified by
   the Phase 10 probe tests).
+
+---
+
+## Sprint 3 status (2026-05-05)
+
+- **Wallet-related findings (subset of Finding 1, 2, 3):**
+  **Resolved.** The four spec-named wallet endpoints (account,
+  transactions, get/put settings) now return the spec's data shape
+  via `WalletAccountResource` and `WalletTransactionResource`.
+  `POST /wallet/pay-booking` is new this sprint — atomic + idempotent
+  with 13 tests covering balance, ownership, double-charge,
+  amount mismatch, locked balance, and DB transaction integrity.
+- **New patterns surfaced for future sprints:** the
+  `App\Support\Idempotency` primitive should be reused for any
+  team-mutating operation (kick / transfer-captain) and any
+  payment retry. Documented in the Sprint 4 recommendations
+  section of the Sprint 3 completion report.
