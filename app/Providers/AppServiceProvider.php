@@ -65,7 +65,10 @@ use App\Services\Auth\FirebaseAuthService;
 use App\Services\Notification\BaileysService;
 use App\Services\Notification\FcmService;
 use App\Services\Notification\SmsService;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 
@@ -132,6 +135,30 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->warnIfFirebaseMisconfigured();
+
+        Response::macro('paginatedEnvelope', function (
+            LengthAwarePaginator $paginator,
+            ?string $resourceClass = null,
+            ?string $message = null,
+            int $code = 200,
+        ) {
+            $items = $resourceClass !== null && is_subclass_of($resourceClass, JsonResource::class)
+                ? $resourceClass::collection($paginator)->resolve()
+                : $paginator->items();
+
+            return Response::json([
+                'success' => true,
+                'message' => $message,
+                'data' => $items,
+                'errors' => null,
+                'meta' => [
+                    'current_page' => $paginator->currentPage(),
+                    'per_page' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                    'last_page' => $paginator->lastPage(),
+                ],
+            ], $code);
+        });
 
         Inertia::share([
             'auth' => fn () => [
