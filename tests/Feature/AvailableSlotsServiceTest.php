@@ -20,8 +20,8 @@ class AvailableSlotsServiceTest extends TestCase
 
     public function test_active_venue_with_no_bookings_reports_available(): void
     {
-        $response = $this->getJson('/api/v1/venues/' . $this->venue->id . '/slots?' . http_build_query([
-            'date'             => now()->addDays(7)->toDateString(),
+        $response = $this->getJson('/api/v1/venues/'.$this->venue->slug.'/slots?'.http_build_query([
+            'date' => now()->addDays(7)->toDateString(),
             'duration_minutes' => 60,
         ]))->assertOk();
 
@@ -33,8 +33,8 @@ class AvailableSlotsServiceTest extends TestCase
     {
         $inactiveVenue = Venue::factory()->create(['status' => 'inactive']);
 
-        $response = $this->getJson('/api/v1/venues/' . $inactiveVenue->id . '/slots?' . http_build_query([
-            'date'             => now()->addDay()->toDateString(),
+        $response = $this->getJson('/api/v1/venues/'.$inactiveVenue->slug.'/slots?'.http_build_query([
+            'date' => now()->addDay()->toDateString(),
             'duration_minutes' => 60,
         ]))->assertOk();
 
@@ -44,32 +44,32 @@ class AvailableSlotsServiceTest extends TestCase
 
     public function test_30_minute_duration_is_valid(): void
     {
-        $this->getJson('/api/v1/venues/' . $this->venue->id . '/slots?' . http_build_query([
-            'date'             => now()->addDay()->toDateString(),
+        $this->getJson('/api/v1/venues/'.$this->venue->slug.'/slots?'.http_build_query([
+            'date' => now()->addDay()->toDateString(),
             'duration_minutes' => 30,
         ]))->assertOk();
     }
 
     public function test_240_minute_duration_is_valid(): void
     {
-        $this->getJson('/api/v1/venues/' . $this->venue->id . '/slots?' . http_build_query([
-            'date'             => now()->addDay()->toDateString(),
+        $this->getJson('/api/v1/venues/'.$this->venue->slug.'/slots?'.http_build_query([
+            'date' => now()->addDay()->toDateString(),
             'duration_minutes' => 240,
         ]))->assertOk();
     }
 
     public function test_today_date_is_valid(): void
     {
-        $this->getJson('/api/v1/venues/' . $this->venue->id . '/slots?' . http_build_query([
-            'date'             => now()->toDateString(),
+        $this->getJson('/api/v1/venues/'.$this->venue->slug.'/slots?'.http_build_query([
+            'date' => now()->toDateString(),
             'duration_minutes' => 60,
         ]))->assertOk();
     }
 
     public function test_response_structure_contains_success_and_data(): void
     {
-        $response = $this->getJson('/api/v1/venues/' . $this->venue->id . '/slots?' . http_build_query([
-            'date'             => now()->addDay()->toDateString(),
+        $response = $this->getJson('/api/v1/venues/'.$this->venue->slug.'/slots?'.http_build_query([
+            'date' => now()->addDay()->toDateString(),
             'duration_minutes' => 60,
         ]))->assertOk();
 
