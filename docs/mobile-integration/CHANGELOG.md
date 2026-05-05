@@ -135,3 +135,17 @@ If mobile decides later it needs phone+password, Sprint 3 will add
 both the endpoint and a fresh test.
 **Files affected:** `tests/Feature/RoleAssignmentTest.php`,
 `docs/mobile-integration/BLOCKERS.md` (resolution note).
+
+---
+
+## 2026-05-05 — Sprint 1 — Phase A3: post-Phase-A baseline
+
+**Decision:** Phase A baseline locked at 299 passing / 2 failing / 301
+total. The 2 remaining failures are the Sprint-0 intentional envelope
+probes in `MobileIntegrationBaseTest` (categories index + venues
+index) — left red on purpose because they document where existing
+controllers diverge from the spec's response envelope.
+**Rationale:** Confirms Phase A's goal: every previously-failing test
+that was a noise / inherited bug is now green; only the deliberate
+verification probes remain as red signal.
+**Files affected:** none (re-run only).
