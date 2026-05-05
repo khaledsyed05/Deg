@@ -32,10 +32,7 @@ class ProfileController extends Controller
      */
     public function show(): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'data' => new UserResource(auth()->user()),
-        ]);
+        return $this->success(new UserResource(auth()->user()));
     }
 
     /**
@@ -58,10 +55,7 @@ class ProfileController extends Controller
             $user->addMediaFromRequest('avatar')->toMediaCollection('avatar');
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => new UserResource($user->fresh()),
-        ]);
+        return $this->success(new UserResource($user->fresh()));
     }
 
     /**
@@ -89,10 +83,7 @@ class ProfileController extends Controller
         $user->clearMediaCollection('avatar');
         $user->addMediaFromRequest('avatar')->toMediaCollection('avatar');
 
-        return response()->json([
-            'success' => true,
-            'data' => ['avatar_url' => $user->getAvatarUrl()],
-        ]);
+        return $this->success(['avatar_url' => $user->getAvatarUrl()]);
     }
 
     /**
@@ -158,9 +149,6 @@ class ProfileController extends Controller
             ),
         ]);
 
-        return response()->json([
-            'success' => true,
-            'data' => new UserResource($user),
-        ]);
+        return $this->success(new UserResource($user));
     }
 }

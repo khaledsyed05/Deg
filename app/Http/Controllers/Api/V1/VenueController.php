@@ -137,10 +137,7 @@ class VenueController extends Controller
         $venue->load(['category', 'club.city', 'media']);
         $venue->recordView(request()->user(), request()->ip());
 
-        return response()->json([
-            'success' => true,
-            'data' => new VenueDetailResource($venue),
-        ]);
+        return $this->success(new VenueDetailResource($venue));
     }
 
     public function availability(Venue $venue): JsonResponse
@@ -173,20 +170,17 @@ class VenueController extends Controller
             ]);
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'reviews' => $reviews->items(),
-                'meta' => [
-                    'current_page' => $reviews->currentPage(),
-                    'last_page' => $reviews->lastPage(),
-                    'per_page' => $reviews->perPage(),
-                    'total' => $reviews->total(),
-                ],
-                'rating_summary' => [
-                    'average' => (float) ($venue->avg_rating ?? 0),
-                    'total' => (int) ($venue->reviews_count ?? 0),
-                ],
+        return $this->success([
+            'reviews' => $reviews->items(),
+            'meta' => [
+                'current_page' => $reviews->currentPage(),
+                'last_page' => $reviews->lastPage(),
+                'per_page' => $reviews->perPage(),
+                'total' => $reviews->total(),
+            ],
+            'rating_summary' => [
+                'average' => (float) ($venue->avg_rating ?? 0),
+                'total' => (int) ($venue->reviews_count ?? 0),
             ],
         ]);
     }
@@ -200,12 +194,9 @@ class VenueController extends Controller
             durationMinutes: $request->duration_minutes,
         );
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'available' => $result->available,
-                'unavailable_reason' => $result->unavailableReason,
-            ],
+        return $this->success([
+            'available' => $result->available,
+            'unavailable_reason' => $result->unavailableReason,
         ]);
     }
 
