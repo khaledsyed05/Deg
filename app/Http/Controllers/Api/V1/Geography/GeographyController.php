@@ -46,6 +46,26 @@ class GeographyController extends Controller
         return $this->success($this->service->getPopularCities($limit));
     }
 
+    /**
+     * Spec endpoint: GET /cities/{id}/neighborhoods.
+     *
+     * Until a dedicated neighborhood model lands (Sprint 6 Maps), this
+     * returns the city's known neighborhoods array if the City model
+     * exposes one, otherwise an empty list. The envelope is the same
+     * either way so mobile can render gracefully.
+     */
+    public function neighborhoods(int $cityId): JsonResponse
+    {
+        $city = $this->service->getCityDetails($cityId);
+        if (! $city) {
+            return $this->notFound(__('City not found'));
+        }
+
+        $neighborhoods = is_array($city['neighborhoods'] ?? null) ? $city['neighborhoods'] : [];
+
+        return $this->success(['city_id' => $cityId, 'neighborhoods' => $neighborhoods]);
+    }
+
     public function detect(Request $request): JsonResponse
     {
         $data = $request->validate([

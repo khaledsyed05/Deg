@@ -90,6 +90,7 @@ Route::prefix('v1')->group(function () {
     Route::get('venues/popular', [VenueController::class, 'popular']);
     Route::get('venues/recently-viewed', [VenueController::class, 'recentlyViewed'])
         ->middleware('auth:sanctum');
+    Route::get('venues/clusters', [PublicGeographyController::class, 'venueClusters']);
     Route::get('venues/{venue}', [VenueController::class, 'show']);
     Route::get('venues/{venue}/availability', [VenueController::class, 'availability']);
     Route::get('venues/{venue}/reviews', [VenueController::class, 'reviews']);
@@ -101,7 +102,16 @@ Route::prefix('v1')->group(function () {
     Route::get('categories', [CategoryController::class, 'index']);
     Route::get('categories/{category}', [CategoryController::class, 'show']);
 
-    // Geography — public (Phase 14)
+    // Geography — canonical paths (per BACKEND_REQUIREMENTS.md)
+    // (venues/clusters is registered above with the other venues/* routes
+    // so it's matched before venues/{venue})
+    Route::get('cities', [PublicGeographyController::class, 'popularCities']);
+    Route::get('cities/{id}', [PublicGeographyController::class, 'show'])->whereNumber('id');
+    Route::get('cities/{id}/neighborhoods', [PublicGeographyController::class, 'neighborhoods'])->whereNumber('id');
+
+    // Geography — DEPRECATED aliases (kept one sprint for back-compat;
+    // mobile / web should migrate to the canonical paths above. Remove
+    // after Sprint 3 confirms no consumers remain.)
     Route::prefix('geography')->group(function () {
         Route::get('countries', [PublicGeographyController::class, 'countries']);
         Route::get('countries/{iso2}/states', [PublicGeographyController::class, 'statesByCountry']);
