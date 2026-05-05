@@ -376,6 +376,7 @@ Route::prefix('v1')->group(function () {
             Route::get('settings', [WalletController::class, 'getSettings']);
             Route::put('settings', [WalletController::class, 'updateSettings']);
             Route::get('transactions', [WalletController::class, 'transactions']);
+            Route::post('pay-booking', [WalletController::class, 'payBooking']);
             Route::post('transfer', [WalletController::class, 'transfer']);
             Route::post('redeem', [WalletController::class, 'redeem']);
             Route::get('expiring', [WalletController::class, 'expiring']);

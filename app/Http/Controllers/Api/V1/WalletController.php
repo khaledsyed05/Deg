@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Wallet\PayBookingRequest;
 use App\Http\Requests\Api\V1\Wallet\ResendTopupOtpRequest;
 use App\Http\Requests\Api\V1\Wallet\UpdateWalletSettingsRequest;
 use App\Http\Requests\Api\V1\Wallet\VerifyTopupRequest;
@@ -10,9 +11,11 @@ use App\Http\Requests\Api\V1\Wallet\WalletTopupRequest;
 use App\Http\Resources\Wallet\WalletAccountResource;
 use App\Http\Resources\Wallet\WalletTransactionResource;
 use App\Http\Traits\ApiResponse;
+use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Services\Wallet\PayBookingService;
 use App\Services\Wallet\WalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -189,6 +192,28 @@ class WalletController extends Controller
             ->paginate(20);
 
         return $this->paginated($transactions, WalletTransactionResource::class);
+    }
+
+    public function payBooking(PayBookingRequest $request, PayBookingService $service): JsonResponse
+    {
+        $user = $request->user();
+        $booking = Booking::findOrFail((int) $request->validated('booking_id'));
+
+        if ($booking->user_id !== $user->id) {
+            return $this->forbidden(__('wallet.booking_not_owned'));
+        }
+
+        $transaction = $service->execute(
+            user: $user,
+            booking: $booking,
+            idempotencyKey: (string) $request->validated('idempotency_key'),
+            amount: (int) $request->validated('amount'),
+        );
+
+        return $this->success(
+            new WalletTransactionResource($transaction),
+            __('wallet.payment_successful'),
+        );
     }
 
     public function transfer(Request $request): JsonResponse
