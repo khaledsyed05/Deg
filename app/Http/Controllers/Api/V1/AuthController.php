@@ -7,6 +7,7 @@ use App\Http\Requests\Api\V1\Auth\GoogleSignInRequest;
 use App\Http\Requests\Api\V1\Auth\LoginOtpSendRequest;
 use App\Http\Requests\Api\V1\Auth\LoginOtpVerifyRequest;
 use App\Http\Resources\UserResource;
+use App\Http\Traits\ApiResponse;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Auth\FirebaseAuthService;
@@ -14,10 +15,13 @@ use App\Services\Auth\OtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Laravel\Sanctum\PersonalAccessToken;
 use RuntimeException;
 
 class AuthController extends Controller
 {
+    use ApiResponse;
+
     public function __construct(
         private UserRepositoryInterface $userRepo,
         private OtpService $otpService,
@@ -135,11 +139,11 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'user_exists'        => ! $isNewUser,
-                'access_token'       => $token,
-                'token_type'         => 'Bearer',
-                'expires_in'         => 31536000,
-                'user'               => ! $isNewUser ? new UserResource($user) : null,
+                'user_exists' => ! $isNewUser,
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'expires_in' => 31536000,
+                'user' => ! $isNewUser ? new UserResource($user) : null,
                 'onboarding_prefill' => $isNewUser
                     ? ['name' => null, 'email' => null, 'avatar_url' => null]
                     : null,
@@ -222,14 +226,14 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'user_exists'        => ! $isNewUser,
-                'access_token'       => $token,
-                'token_type'         => 'Bearer',
-                'expires_in'         => 31536000,
-                'user'               => ! $isNewUser ? new UserResource($user) : null,
+                'user_exists' => ! $isNewUser,
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'expires_in' => 31536000,
+                'user' => ! $isNewUser ? new UserResource($user) : null,
                 'onboarding_prefill' => $isNewUser ? [
-                    'name'       => $claims['name'] ?? null,
-                    'email'      => $claims['email'] ?? null,
+                    'name' => $claims['name'] ?? null,
+                    'email' => $claims['email'] ?? null,
                     'avatar_url' => $claims['picture'] ?? null,
                 ] : null,
             ],
@@ -239,14 +243,14 @@ class AuthController extends Controller
     public function completeProfile(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name'          => ['required', 'string', 'max:100'],
+            'name' => ['required', 'string', 'max:100'],
             'date_of_birth' => ['required', 'date', 'before:today', 'after:'.now()->subYears(120)->toDateString()],
         ]);
 
         $user = $request->user();
         $user->update([
-            'name'                    => $data['name'],
-            'date_of_birth'           => $data['date_of_birth'],
+            'name' => $data['name'],
+            'date_of_birth' => $data['date_of_birth'],
             'onboarding_completed_at' => now(),
         ]);
 
@@ -258,7 +262,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => ['user' => new UserResource($user->fresh())],
+            'data' => ['user' => new UserResource($user->fresh())],
         ]);
     }
 
@@ -288,12 +292,13 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()->delete();
+        $token = $request->user()->currentAccessToken();
 
-        return response()->json([
-            'success' => true,
-            'message' => __('auth.logged_out'),
-        ]);
+        if ($token instanceof PersonalAccessToken) {
+            $token->delete();
+        }
+
+        return $this->noContent(__('auth.logged_out'));
     }
 
     /**
@@ -303,10 +308,7 @@ class AuthController extends Controller
     {
         $request->user()->tokens()->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => __('auth.logged_out_all'),
-        ]);
+        return $this->noContent(__('auth.logged_out_all'));
     }
 
     /**
