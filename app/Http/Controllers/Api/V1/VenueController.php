@@ -20,7 +20,6 @@ use App\Services\Venue\VenueExtrasService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class VenueController extends Controller
 {
@@ -33,7 +32,7 @@ class VenueController extends Controller
         private SlotAvailabilityService $slotAvailabilityService,
     ) {}
 
-    public function index(ListVenuesRequest $request): AnonymousResourceCollection
+    public function index(ListVenuesRequest $request): JsonResponse
     {
         $query = $this->baseListQuery();
 
@@ -55,12 +54,13 @@ class VenueController extends Controller
 
         $this->applySort($query, $request->input('sort_by'));
 
-        return VenueResource::collection(
+        return $this->paginated(
             $query->paginate($request->integer('per_page') ?: 15),
+            VenueResource::class,
         );
     }
 
-    public function search(SearchVenuesRequest $request): AnonymousResourceCollection
+    public function search(SearchVenuesRequest $request): JsonResponse
     {
         $query = $this->baseListQuery()->searchTranslated((string) $request->input('query'));
 
@@ -72,12 +72,13 @@ class VenueController extends Controller
             $query->withCategory($request->integer('category_id'));
         }
 
-        return VenueResource::collection(
+        return $this->paginated(
             $query->paginate($request->integer('per_page') ?: 15),
+            VenueResource::class,
         );
     }
 
-    public function nearby(NearbyVenuesRequest $request): AnonymousResourceCollection
+    public function nearby(NearbyVenuesRequest $request): JsonResponse
     {
         $query = $this->baseListQuery()->nearby(
             (float) $request->input('latitude'),
@@ -89,12 +90,13 @@ class VenueController extends Controller
             $query->withCategory($request->integer('category_id'));
         }
 
-        return VenueResource::collection(
+        return $this->paginated(
             $query->paginate($request->integer('per_page') ?: 15),
+            VenueResource::class,
         );
     }
 
-    public function featured(): AnonymousResourceCollection
+    public function featured(): JsonResponse
     {
         $venues = $this->baseListQuery()
             ->featured()
@@ -102,7 +104,7 @@ class VenueController extends Controller
             ->limit(10)
             ->get();
 
-        return VenueResource::collection($venues);
+        return $this->success(VenueResource::collection($venues));
     }
 
     public function popular(Request $request, VenueExtrasService $service): JsonResponse

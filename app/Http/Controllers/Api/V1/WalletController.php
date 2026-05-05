@@ -135,7 +135,7 @@ class WalletController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        return response()->json($transactions);
+        return $this->paginated($transactions);
     }
 
     public function transfer(Request $request): JsonResponse

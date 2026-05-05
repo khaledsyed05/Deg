@@ -14,7 +14,6 @@ use App\Services\Promotion\PromotionRemovalService;
 use App\Services\Promotion\QrPromotionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PromotionController extends Controller
 {
@@ -23,7 +22,7 @@ class PromotionController extends Controller
     /**
      * List currently active promotions. Optional filter by venue.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): JsonResponse
     {
         $venueId = $request->integer('venue_id') ?: null;
 
@@ -33,13 +32,13 @@ class PromotionController extends Controller
             $query->forVenue($venueId);
         }
 
-        return PromotionResource::collection($query->latest()->limit(50)->get());
+        return $this->success(PromotionResource::collection($query->latest()->limit(50)->get()));
     }
 
     /**
      * Featured promotions (curated).
      */
-    public function featured(): AnonymousResourceCollection
+    public function featured(): JsonResponse
     {
         $promotions = Promotion::query()
             ->active()
@@ -49,7 +48,7 @@ class PromotionController extends Controller
             ->limit(10)
             ->get();
 
-        return PromotionResource::collection($promotions);
+        return $this->success(PromotionResource::collection($promotions));
     }
 
     /**
@@ -99,7 +98,7 @@ class PromotionController extends Controller
     /**
      * Promotions applicable to a specific venue.
      */
-    public function forVenue(string $slug): AnonymousResourceCollection
+    public function forVenue(string $slug): JsonResponse
     {
         $venue = Venue::where('slug', $slug)->firstOrFail();
 
@@ -110,7 +109,7 @@ class PromotionController extends Controller
             ->latest()
             ->get();
 
-        return PromotionResource::collection($promotions);
+        return $this->success(PromotionResource::collection($promotions));
     }
 
     public function qrRedeem(Request $request, QrPromotionService $service): JsonResponse
@@ -161,15 +160,6 @@ class PromotionController extends Controller
             ->latest()
             ->paginate(20);
 
-        return response()->json([
-            'success' => true,
-            'data' => $usages->items(),
-            'meta' => [
-                'current_page' => $usages->currentPage(),
-                'last_page' => $usages->lastPage(),
-                'per_page' => $usages->perPage(),
-                'total' => $usages->total(),
-            ],
-        ]);
+        return $this->paginated($usages);
     }
 }
