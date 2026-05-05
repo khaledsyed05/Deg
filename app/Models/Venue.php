@@ -158,10 +158,10 @@ class Venue extends Model implements HasMedia, Sortable
         $like = '%'.$term.'%';
 
         return $query->where(function (Builder $q) use ($like) {
-            $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.ar')) LIKE ?", [$like])
-                ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.en')) LIKE ?", [$like])
-                ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(description, '$.ar')) LIKE ?", [$like])
-                ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(description, '$.en')) LIKE ?", [$like]);
+            $q->where('name->ar', 'LIKE', $like)
+                ->orWhere('name->en', 'LIKE', $like)
+                ->orWhere('description->ar', 'LIKE', $like)
+                ->orWhere('description->en', 'LIKE', $like);
         });
     }
 
