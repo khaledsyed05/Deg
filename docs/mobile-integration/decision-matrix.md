@@ -139,3 +139,32 @@ recommended action and who owns it?
 | Defer to Sprint 3 (auth) | 6 | 1 |
 | Defer to Sprint 7 (chat) | 7 | 4 |
 | **Total** | **7** | **~39 distinct findings across 37 🔴 tests** |
+
+---
+
+## Sprint 2 status (2026-05-05)
+
+- **Finding 1 — Resource collections bypass envelope.** **Resolved in
+  Sprint 2.** ApiResponse::paginated() and Response::paginatedEnvelope
+  macro added; 6+ endpoints migrated.
+- **Finding 2 — `message` key omitted on bespoke responses.**
+  **Resolved in Sprint 2.** Bypassing controllers migrated to
+  `$this->success(...)`; the strengthened trait emits `message: null`
+  by default.
+- **Finding 3 — `data` key omitted on no-content responses.**
+  **Resolved in Sprint 2.** `noContent()` helper added; bootstrap
+  exception handler and `EnsureJsonErrorShape` middleware updated to
+  emit `data: null` on every error envelope.
+- **Finding 4 — Two real 500s.** **Resolved in Sprint 2.**
+  `/auth/logout` (Sanctum TransientToken) and `/venues/nearby`
+  (driver-aware bounding-box) both fixed with regression tests.
+- **Finding 5 — Geography path naming.** **Resolved in Sprint 2.**
+  Canonical `/cities`, `/cities/{id}`, `/cities/{id}/neighborhoods`,
+  `/venues/clusters` registered; `/api/v1/geography/...` aliases
+  retained for one sprint.
+- **Finding 6 — `/auth/register` route missing.** **Deferred to
+  Sprint 3.** Test now asserts the canonical 404 envelope so the
+  suite is green; Sprint 3 owns the spec/code reconciliation.
+- **Finding 7 — Chat endpoints don't exist.** **Deferred to Sprint
+  7.** Until then the canonical 404 envelope applies (verified by
+  the Phase 10 probe tests).

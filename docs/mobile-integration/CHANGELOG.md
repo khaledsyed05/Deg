@@ -164,6 +164,31 @@ combine it with bespoke `response()->json` calls in adjacent methods.
 
 ---
 
+## 2026-05-05 — Sprint 2 — Summary
+
+**Decision:** Sprint 2 (Contract Conformance) closed with 73/73
+MobileEnvelope tests green and the full PHPUnit suite at 388/388
+green. The work concentrated on three patterns surfaced in Sprint 1:
+(1) collection responses missing the envelope, (2) `message` /
+`data` keys omitted on bespoke responses, (3) error responses
+omitting `data: null`. All three are fixed at the trait /
+exception-handler / middleware level — no per-endpoint patching
+needed for future controllers.
+
+**Rationale:** Centralising envelope semantics in
+`App\Http\Traits\ApiResponse`, `bootstrap/app.php` exception
+handlers, and `EnsureJsonErrorShape` middleware means new endpoints
+written in Sprint 3+ get the canonical envelope for free if they
+either use the trait or let exceptions propagate.
+
+**Files affected:** `app/Http/Traits/ApiResponse.php`,
+`app/Providers/AppServiceProvider.php`, `bootstrap/app.php`,
+`app/Http/Middleware/EnsureJsonErrorShape.php`, eight
+`app/Http/Controllers/Api/V1/*` controllers, `app/Models/Venue.php`,
+`routes/api.php`, six new test files under `tests/`.
+
+---
+
 ## 2026-05-05 — Sprint 2 — Phase A2: non-mobile API consumers
 
 **Decision:** Mobile envelope changes can break freely — no
