@@ -64,6 +64,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage(),
+                    'data' => null,
                     'errors' => $e->errors(),
                 ], 422);
             }
@@ -72,6 +73,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage() ?: 'Unauthenticated',
+                    'data' => null,
                     'errors' => null,
                 ], 401);
             }
@@ -80,6 +82,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage() ?: 'Forbidden',
+                    'data' => null,
                     'errors' => null,
                 ], 403);
             }
@@ -90,6 +93,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => "{$model} not found",
+                    'data' => null,
                     'errors' => null,
                 ], 404);
             }
@@ -98,6 +102,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage() ?: 'Endpoint not found',
+                    'data' => null,
                     'errors' => null,
                 ], 404);
             }
@@ -106,6 +111,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage() ?: 'Method not allowed',
+                    'data' => null,
                     'errors' => null,
                 ], 405);
             }
@@ -114,6 +120,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage() ?: 'Too many requests',
+                    'data' => null,
                     'errors' => null,
                 ], 429);
             }
@@ -122,6 +129,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage() ?: 'HTTP error',
+                    'data' => null,
                     'errors' => null,
                 ], $e->getStatusCode());
             }
@@ -136,6 +144,7 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->json([
                 'success' => false,
                 'message' => app()->hasDebugModeEnabled() ? $e->getMessage() : 'Server error',
+                'data' => null,
                 'errors' => app()->hasDebugModeEnabled() ? [
                     'exception' => $e::class,
                     'file' => $e->getFile().':'.$e->getLine(),

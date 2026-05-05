@@ -50,6 +50,7 @@ class EnsureJsonErrorShape
         return new JsonResponse([
             'success' => false,
             'message' => $this->messageForStatus($status),
+            'data' => null,
             'errors' => null,
             'debug' => app()->hasDebugModeEnabled() && $body !== '' ? mb_substr($body, 0, 500) : null,
         ], $status);
@@ -67,6 +68,7 @@ class EnsureJsonErrorShape
             return [
                 'success' => false,
                 'message' => is_string($message) ? $message : $this->messageForStatus($status),
+                'data' => null,
                 'errors' => $errors,
             ];
         }
@@ -74,6 +76,7 @@ class EnsureJsonErrorShape
         return [
             'success' => false,
             'message' => is_string($payload) && $payload !== '' ? $payload : $this->messageForStatus($status),
+            'data' => null,
             'errors' => null,
         ];
     }
