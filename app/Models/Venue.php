@@ -167,15 +167,31 @@ class Venue extends Model implements HasMedia, Sortable
 
     public function scopeNearby(Builder $query, float $latitude, float $longitude, float $radiusKm = 10): Builder
     {
+        $query->whereNotNull('latitude')->whereNotNull('longitude');
+
+        $driver = $query->getQuery()->getConnection()->getDriverName();
+
+        if ($driver === 'mysql' || $driver === 'mariadb') {
+            return $query
+                ->selectRaw(
+                    '*, ( 6371 * acos( cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)) ) ) AS distance_km',
+                    [$latitude, $longitude, $latitude],
+                )
+                ->havingRaw('distance_km <= ?', [$radiusKm])
+                ->orderBy('distance_km');
+        }
+
+        // Portable bounding-box pre-filter for drivers without trig helpers
+        // (SQLite). One degree of latitude is ~111 km; longitude shrinks by
+        // cos(latitude). The outer caller can apply a precise Haversine in
+        // PHP if it needs sorted distances on these drivers.
+        $latDelta = $radiusKm / 111.0;
+        $lngDelta = $radiusKm / max(0.0001, 111.0 * cos(deg2rad($latitude)));
+
         return $query
-            ->whereNotNull('latitude')
-            ->whereNotNull('longitude')
-            ->selectRaw(
-                '*, ( 6371 * acos( cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)) ) ) AS distance_km',
-                [$latitude, $longitude, $latitude],
-            )
-            ->havingRaw('distance_km <= ?', [$radiusKm])
-            ->orderBy('distance_km');
+            ->whereBetween('latitude', [$latitude - $latDelta, $latitude + $latDelta])
+            ->whereBetween('longitude', [$longitude - $lngDelta, $longitude + $lngDelta])
+            ->orderBy('id');
     }
 
     public function isOpenNow(?\DateTimeInterface $at = null): bool
