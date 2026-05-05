@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Wallet\ResendTopupOtpRequest;
+use App\Http\Requests\Api\V1\Wallet\UpdateWalletSettingsRequest;
 use App\Http\Requests\Api\V1\Wallet\VerifyTopupRequest;
 use App\Http\Requests\Api\V1\Wallet\WalletTopupRequest;
+use App\Http\Resources\Wallet\WalletAccountResource;
+use App\Http\Resources\Wallet\WalletTransactionResource;
 use App\Http\Traits\ApiResponse;
 use App\Models\Payment;
 use App\Models\User;
@@ -24,17 +27,14 @@ class WalletController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        return $this->account($request);
+    }
+
+    public function account(Request $request): JsonResponse
+    {
         $wallet = Wallet::forUser($request->user());
 
-        return $this->success([
-            'balance' => (int) $wallet->balance,
-            'locked' => (int) $wallet->locked,
-            'available' => $wallet->available,
-            'total_earned' => (int) $wallet->total_earned,
-            'total_spent' => (int) $wallet->total_spent,
-            'total_topup' => (int) $wallet->total_topup,
-            'currency' => $wallet->currency ?: 'SYP',
-        ]);
+        return $this->success(new WalletAccountResource($wallet));
     }
 
     public function topup(WalletTopupRequest $request): JsonResponse
@@ -125,6 +125,59 @@ class WalletController extends Controller
         };
     }
 
+    /**
+     * Wallet settings (auto-topup configuration + low-balance alert
+     * preference). Persisted on wallets.settings (json) — defaults to
+     * the disabled / null shape on first read for a fresh user.
+     */
+    public function getSettings(Request $request): JsonResponse
+    {
+        $wallet = Wallet::forUser($request->user());
+
+        return $this->success($this->settingsPayload($wallet));
+    }
+
+    public function updateSettings(UpdateWalletSettingsRequest $request): JsonResponse
+    {
+        $wallet = Wallet::forUser($request->user());
+        $current = is_array($wallet->settings) ? $wallet->settings : [];
+
+        $merged = array_replace($current, $request->validated());
+
+        // When auto_topup is explicitly disabled, clear the dependent fields
+        // so the next GET reflects the cleared state.
+        if (array_key_exists('auto_topup_enabled', $merged) && $merged['auto_topup_enabled'] === false) {
+            $merged['auto_topup_threshold'] = null;
+            $merged['auto_topup_amount'] = null;
+            $merged['auto_topup_payment_method'] = null;
+        }
+
+        $wallet->settings = $merged;
+        $wallet->save();
+
+        return $this->success($this->settingsPayload($wallet->fresh()));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function settingsPayload(Wallet $wallet): array
+    {
+        $settings = is_array($wallet->settings) ? $wallet->settings : [];
+
+        return [
+            'auto_topup_enabled' => (bool) ($settings['auto_topup_enabled'] ?? false),
+            'auto_topup_threshold' => isset($settings['auto_topup_threshold'])
+                ? (int) $settings['auto_topup_threshold']
+                : null,
+            'auto_topup_amount' => isset($settings['auto_topup_amount'])
+                ? (int) $settings['auto_topup_amount']
+                : null,
+            'auto_topup_payment_method' => $settings['auto_topup_payment_method'] ?? null,
+            'low_balance_alert' => (bool) ($settings['low_balance_alert'] ?? false),
+        ];
+    }
+
     public function transactions(Request $request): JsonResponse
     {
         $type = $request->query('type');
@@ -135,7 +188,7 @@ class WalletController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        return $this->paginated($transactions);
+        return $this->paginated($transactions, WalletTransactionResource::class);
     }
 
     public function transfer(Request $request): JsonResponse

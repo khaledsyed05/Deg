@@ -372,6 +372,9 @@ Route::prefix('v1')->group(function () {
         // Wallet & Credits (Phase 10) + Top-up Payment Integration (Phase 11)
         Route::prefix('wallet')->group(function () {
             Route::get('/', [WalletController::class, 'index']);
+            Route::get('account', [WalletController::class, 'account']);
+            Route::get('settings', [WalletController::class, 'getSettings']);
+            Route::put('settings', [WalletController::class, 'updateSettings']);
             Route::get('transactions', [WalletController::class, 'transactions']);
             Route::post('transfer', [WalletController::class, 'transfer']);
             Route::post('redeem', [WalletController::class, 'redeem']);
