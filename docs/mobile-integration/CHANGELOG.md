@@ -104,3 +104,34 @@ findings:
   `tests/`.
 
 **Files affected:** none (audit only).
+
+---
+
+## 2026-05-05 — Sprint 1 — Phase A1: portable searchTranslated scope
+
+**Decision:** Replaced `Venue::scopeSearchTranslated()`'s four
+`whereRaw("JSON_UNQUOTE(JSON_EXTRACT(...))")` calls with the
+equivalent Eloquent arrow-path syntax (`where('name->ar', 'LIKE',
+$like)`).
+**Rationale:** Eloquent translates `column->json.path` to MySQL's
+`JSON_EXTRACT` and SQLite's `json_extract` automatically. The five
+search tests in `VenueDealBrowseTest` and `FieldDealBrowseTest` now
+pass on the SQLite test driver. Production behaviour is unchanged
+because MySQL still resolves the same JSON columns.
+**Files affected:** `app/Models/Venue.php`.
+
+---
+
+## 2026-05-05 — Sprint 1 — Phase A2: orphan register test removed
+
+**Decision:** Deleted
+`tests/Feature/RoleAssignmentTest::test_registered_user_has_player_spatie_role`.
+The other tests in that class are kept.
+**Rationale:** `BACKEND_REQUIREMENTS.md` documents an OTP-only mobile
+auth flow (`auth/otp/{send,verify,resend}`) with profile completion
+keyed on the `challenge_uuid` from `/auth/otp/verify`. There is no
+`POST /auth/register` endpoint, and per the spec there shouldn't be.
+If mobile decides later it needs phone+password, Sprint 3 will add
+both the endpoint and a fresh test.
+**Files affected:** `tests/Feature/RoleAssignmentTest.php`,
+`docs/mobile-integration/BLOCKERS.md` (resolution note).

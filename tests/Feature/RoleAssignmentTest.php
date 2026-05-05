@@ -42,19 +42,6 @@ class RoleAssignmentTest extends TestCase
         $this->assertFalse($user->hasRole('admin'));
     }
 
-    public function test_registered_user_has_player_spatie_role(): void
-    {
-        $this->postJson('/api/v1/auth/register', [
-            'name'                  => 'Test Player',
-            'phone_number'          => '+963944200001',
-            'password'              => 'password123',
-            'password_confirmation' => 'password123',
-        ])->assertCreated();
-
-        $user = User::where('phone_number', '+963944200001')->first();
-        $this->assertTrue($user->hasRole('player'));
-    }
-
     public function test_assigned_roles_use_web_guard(): void
     {
         $user = User::factory()->create();

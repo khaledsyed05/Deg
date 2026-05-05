@@ -80,3 +80,11 @@ If the former, Sprint 3 (Auth flows hardening) wires the route. If the
 latter, the test should be removed or rewritten against `auth/otp/verify`.
 
 **Workaround applied:** None. Test is left failing.
+
+**Resolution:** Test removed in Sprint 1 (Phase A2, 2026-05-05). The
+canonical mobile auth flow per `BACKEND_REQUIREMENTS.md` is
+OTP-only (`auth/otp/{send,verify,resend}`); profile completion happens
+via the `challenge_uuid` returned by `/auth/otp/verify`. There is no
+separate register endpoint. If phone+password registration is
+reintroduced later, a fresh test should be written against the new
+contract.
