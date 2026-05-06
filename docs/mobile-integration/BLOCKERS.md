@@ -15,6 +15,72 @@ Format:
 
 ---
 
+## 2026-05-06 — Sprint 8 B4 follow-up — Pusher creds STILL missing
+
+**Status:** Sprint 8 Phase B4 re-checked `.env` for `PUSHER_*` variables.
+**All four are still absent.** No code change in B4; the
+documentation is the deliverable.
+
+**Why deferred:** Sprint 8 has no information about why creds
+weren't provisioned between Sprints 7 and 8. The Sprint 8 prompt's
+instruction was clear: "If smoke fails after one focused debug
+attempt (≤ 2 hours), document the exact failure mode and move on.
+Sprint 8 doesn't block on this."
+
+**Resolution runbook for Khaled (estimated 15 minutes):**
+
+1. Provision the four env vars in `.env`:
+   ```
+   PUSHER_APP_ID=...
+   PUSHER_APP_KEY=...
+   PUSHER_APP_SECRET=...
+   PUSHER_APP_CLUSTER=...   # commonly mt1, eu, ap1, etc.
+   ```
+   Get these from `dashboard.pusher.com` → your app → **App Keys**
+   tab.
+
+2. Set `BROADCAST_CONNECTION=pusher` in `.env` (currently set to
+   `log` for the degraded mode).
+
+3. Verify the connection from `php artisan tinker`:
+   ```php
+   $pusher = new \Pusher\Pusher(
+       env('PUSHER_APP_KEY'),
+       env('PUSHER_APP_SECRET'),
+       env('PUSHER_APP_ID'),
+       ['cluster' => env('PUSHER_APP_CLUSTER'), 'useTLS' => true]
+   );
+   $r = $pusher->trigger('test', 'test', ['msg' => 'hello']);
+   var_dump($r);
+   ```
+   Expected: HTTP 200 returned. If 401/403, the credentials are
+   wrong. If timeout, check the cluster value matches the dashboard.
+
+4. Open the Pusher dashboard's **Debug Console** for the app,
+   leave it open.
+
+5. Start `php artisan queue:work` in a separate shell (events
+   implement `ShouldBroadcast`, not `ShouldBroadcastNow`, so they
+   queue).
+
+6. Through Postman, hit `POST /api/v1/messages` (with valid
+   conversation + idempotency_key) — observe `message.created`
+   appearing in the Debug Console with the channel name
+   `private-dm-{u1}-{u2}`. Repeat for `messages/{id}/mark-read`
+   and `conversations/{id}/leave`.
+
+7. Once verified, update **THIS** BLOCKERS entry: change "STILL
+   missing" → "RESOLVED <date>" and tick the Sprint 7 BLOCKERS
+   entry above.
+
+**Sprint 8 build status:** all 4 broadcast events
+(`MessageCreated`, `MessageRead`, `MemberJoined`, `MemberLeft`)
+have unit-test pinned wire formats (Sprint 7 `BroadcastingTest`).
+Once creds are in place, the live verification above is purely
+empirical confirmation of what the unit tests already prove.
+
+---
+
 ## 2026-05-06 — Sprint 7 — Pusher credentials missing from `.env`
 
 **Blocker:** The Sprint 7 prompt's pre-requisite #4 stated that
