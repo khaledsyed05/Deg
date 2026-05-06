@@ -53,6 +53,7 @@ use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SocialController;
+use App\Http\Controllers\Api\V1\SportsProfileController;
 use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\TeamController;
@@ -345,6 +346,12 @@ Route::prefix('v1')->group(function () {
             ->whereNumber('id');
         Route::post('teams/{id}/invite', [TeamController::class, 'generateInvite'])
             ->whereNumber('id');
+
+        // Sports Profile (Phase 9 — Sprint 5)
+        Route::prefix('sports-profile')->group(function (): void {
+            Route::get('me', [SportsProfileController::class, 'me']);
+            Route::get('weekly-activity', [SportsProfileController::class, 'weeklyActivity']);
+        });
 
         // Phase 18 — Profile / Auth / Devices
         Route::put('profile/phone-number/initiate', [ProfileController::class, 'initiatePhoneChange']);
