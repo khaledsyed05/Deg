@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Exceptions\Moderation\ModerationException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Venue\ByBoundsRequest;
 use App\Http\Requests\Api\V1\Venue\GetAvailableSlotsRequest;
 use App\Http\Requests\Api\V1\Venue\ListVenuesRequest;
 use App\Http\Requests\Api\V1\Venue\NearbyVenuesRequest;
 use App\Http\Requests\Api\V1\Venue\ReportVenueRequest;
 use App\Http\Requests\Api\V1\Venue\SearchVenuesRequest;
 use App\Http\Resources\V1\Venue\VenueDetailResource;
+use App\Http\Resources\Venue\VenueMapResource;
 use App\Http\Resources\VenueResource;
 use App\Http\Traits\ApiResponse;
 use App\Models\Venue;
@@ -76,6 +78,32 @@ class VenueController extends Controller
             $query->paginate($request->integer('per_page') ?: 15),
             VenueResource::class,
         );
+    }
+
+    /**
+     * Lightweight venue list inside a lat/lng bounding box. Tuned for
+     * map viewports — returns {@see VenueMapResource}, not the full
+     * venue resource, so a 200-marker viewport paints fast on mobile.
+     */
+    public function byBounds(ByBoundsRequest $request): JsonResponse
+    {
+        $categoryId = $request->integer('category_id') ?: $request->integer('sport_id');
+        $limit = $request->integer('limit') ?: 200;
+
+        $venues = $this->venueRepo->query()
+            ->active()
+            ->with(['club.city'])
+            ->withinBounds(
+                north: (float) $request->validated('north'),
+                south: (float) $request->validated('south'),
+                east: (float) $request->validated('east'),
+                west: (float) $request->validated('west'),
+            )
+            ->when($categoryId, fn ($q, $id) => $q->where('category_id', $id))
+            ->limit($limit)
+            ->get();
+
+        return $this->success(VenueMapResource::collection($venues));
     }
 
     public function nearby(NearbyVenuesRequest $request): JsonResponse

@@ -92,6 +92,8 @@ Route::prefix('v1')->group(function () {
     Route::get('venues/recently-viewed', [VenueController::class, 'recentlyViewed'])
         ->middleware('auth:sanctum');
     Route::get('venues/clusters', [PublicGeographyController::class, 'venueClusters']);
+    Route::get('venues/by-bounds', [VenueController::class, 'byBounds'])
+        ->middleware('auth:sanctum');
     Route::get('venues/{venue}', [VenueController::class, 'show']);
     Route::get('venues/{venue}/availability', [VenueController::class, 'availability']);
     Route::get('venues/{venue}/reviews', [VenueController::class, 'reviews']);
