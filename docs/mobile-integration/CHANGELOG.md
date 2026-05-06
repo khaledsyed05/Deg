@@ -13,6 +13,96 @@ Format:
 
 ---
 
+## 2026-05-06 — Sprint 7 — 9 chat endpoints + channel authorization
+
+**Decision:** Build the full chat suite (9 endpoints), four broadcast
+events, and the `/pusher/auth` channel-authorization endpoint in one
+sprint. Schema is 4 new tables (`conversations`,
+`conversation_participants`, `messages`, `message_reads`) with
+`messages(conversation_id, created_at)` indexed from day one. Privacy
+contract: admins do NOT have blanket access to chat content.
+**Rationale:** Chat is the largest feature surface in the integration
+plan. Splitting it across two sprints would mean shipping a partial
+real-time tier; landing it together keeps the wire format and
+broadcasting contracts coherent. The 18-test
+`PusherAuthTest` is the security boundary — channel hijacking is the
+primary threat model and every test in that file exists to make
+hijacking harder than the legitimate happy paths.
+**Files affected:** new — 4 migrations, 4 models, 4 factories,
+`app/Policies/ConversationPolicy.php`,
+`app/Services/Chat/{SendMessageService, MarkReadService,
+ChannelAuthorizer}.php`,
+`app/Http/Controllers/Api/V1/Chat/{ConversationController,
+MessageController, PusherAuthController}.php`,
+`app/Http/Resources/Chat/{ConversationListResource,
+ConversationDetailResource, MessageResource}.php`,
+`app/Http/Requests/Api/V1/Chat/SendMessageRequest.php`,
+`app/Events/Chat/{MessageCreated, MessageRead, MemberJoined,
+MemberLeft}.php`,
+`app/Support/MessageIdempotency.php`,
+`tests/Feature/Chat/*` (75 tests across 9 files),
+`docs/mobile-integration/sprint-7-discovery.md`. Modified —
+`app/Providers/AppServiceProvider.php` (Pusher singleton),
+`app/Providers/AuthServiceProvider.php` (ConversationPolicy),
+`routes/api.php`,
+`tests/Feature/MobileEnvelope/Phase10ChatTest.php`.
+
+---
+
+## 2026-05-06 — Sprint 7 — Channel hijacking is the threat model
+
+**Decision:** `ChannelAuthorizer` parses every private channel name
+against one of the three documented spec patterns and authorizes
+against the user's actual membership before issuing a Pusher
+signature. Anything else returns `null` → 403.
+**Rationale:** A user with a valid Sanctum token attempting to
+subscribe to `private-dm-other-user-123` (a conversation they're
+not in) is the worst-case bug in the sprint. Returning a Pusher
+signature without parsing the channel name would be a privacy
+disaster. The 18 tests in `PusherAuthTest` cover the full attack
+surface: DM/team/group happy paths + hijack attempts, malformed
+names (no second user, unsorted DM pair, zero-id), unknown channel
+patterns, public-* rejection, validation, concurrent independent
+signatures.
+**Files affected:** `app/Services/Chat/ChannelAuthorizer.php`,
+`app/Http/Controllers/Api/V1/Chat/PusherAuthController.php`,
+`tests/Feature/Chat/PusherAuthTest.php`.
+
+---
+
+## 2026-05-06 — Sprint 7 — MessageIdempotency parallel to wallet primitive
+
+**Decision:** Build a chat-specific
+`App\Support\MessageIdempotency` (30 lines, mirrors the wallet
+`Idempotency` helper's lock + key pattern but targets `Message`)
+rather than refactoring the existing wallet helper to be generic.
+**Rationale:** Refactoring `Idempotency` to be generic over a
+`Model` type would touch the wallet codebase and require updating
+PayBookingService + tests. That's its own task. A 30-line
+parallel helper for chat ships Sprint 7 cleanly and leaves the
+generic-extraction work as a future cleanup.
+**Files affected:** `app/Support/MessageIdempotency.php`,
+`app/Services/Chat/SendMessageService.php`.
+
+---
+
+## 2026-05-06 — Sprint 7 — Privacy: admins have no chat access
+
+**Decision:** `ConversationPolicy::view`/`send`/`mute`/`leave` only
+authorize against `Conversation::hasParticipant`. Admins do NOT
+have blanket read access to chat content.
+**Rationale:** Privacy is the contract. If moderation needs to read
+flagged conversations later, that's a deliberate decision with its
+own audit-logging story — not something to bake in by default. The
+Sprint 4 `TeamPolicy` admin-can-do-most-things default does NOT
+carry over here because team metadata is operational; chat content
+is intimate.
+**Files affected:** `app/Policies/ConversationPolicy.php`,
+`tests/Feature/Chat/*` (every test exercises the participants-only
+contract).
+
+---
+
 ## 2026-05-06 — Sprint 7 — Phase 0: Pusher infrastructure (degraded mode)
 
 **Decision:** Sprint 7 proceeds in **degraded Mode B**. The pre-requisite

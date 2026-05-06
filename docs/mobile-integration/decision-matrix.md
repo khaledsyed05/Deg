@@ -273,3 +273,43 @@ recommended action and who owns it?
   issues with client-side clustering at high zoom levels.
 - **No new dependencies introduced.** `whereBetween` covers the
   whole spec; no PostGIS, no spatial PHP libraries.
+
+---
+
+## Sprint 7 status (2026-05-06)
+
+- **All 9 chat endpoints shipped.** 4 reads + 2 mutating + Pusher
+  channel auth + mute/leave. Schema is 4 new tables
+  (`conversations`, `conversation_participants`, `messages`,
+  `message_reads`) with the critical
+  `messages(conversation_id, created_at)` index from day one.
+- **Mode B (Full Pusher) running in DEGRADED state.** The sprint's
+  pre-requisite #4 stated `PUSHER_*` env vars would be present;
+  audit found them absent. Per BLOCKERS protocol, Sprint 7
+  proceeded with `pusher/pusher-php-server 7.2.7` installed,
+  test-only placeholder secrets in `phpunit.xml` (so HMAC signing
+  math runs deterministically), and `BROADCAST_CONNECTION=log` in
+  dev. All 9 endpoints + 4 events are fully implemented and
+  tested; the manual Pusher Debug Console smoke test in B6 is
+  deferred until real creds land (~15 min checklist).
+- **Channel hijacking is the primary threat model**, addressed
+  by `ChannelAuthorizer` parsing each private-channel name and
+  authorizing against actual membership. 18 tests in
+  `PusherAuthTest` (well above the ≥12 minimum) cover DM/team/group
+  happy paths, hijack attempts, malformed names (no second user,
+  unsorted DM pair, zero-id), unknown channel patterns, public-*
+  rejection, validation, concurrent independent signatures.
+- **Privacy contract:** admins do NOT have blanket access to chat
+  content. `ConversationPolicy` only authorizes against
+  `Conversation::hasParticipant`. If moderation needs admin
+  override later, that's a separate decision — and a separate
+  policy method.
+- **Idempotency primitive split:** the wallet-typed
+  `App\Support\Idempotency` was not refactored generic; instead a
+  parallel `App\Support\MessageIdempotency` (30 lines) targets
+  Message rows. A future cleanup can extract a generic
+  `Idempotency<T>` helper from both, but that's its own task.
+- **Out of scope this sprint:** typing indicators (spec marks
+  optional), message editing, message reactions, real upload
+  pipeline for attachments (Sprint 8), admin override on chat
+  content.

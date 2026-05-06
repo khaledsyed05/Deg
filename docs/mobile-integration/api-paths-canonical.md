@@ -249,6 +249,37 @@ ownership / notes.
   `App\Services\SportsProfile\WeeklyActivityService`; cache
   invalidated by `BookingObserver` on booking create/update/delete)
 
+## Phase 10: Chat (Pusher)
+
+All under `auth:sanctum`. Schema introduced in Sprint 7 B1 (4 new
+tables: conversations, conversation_participants, messages,
+message_reads). Channel naming convention follows
+`BACKEND_REQUIREMENTS.md` L4687-4689 exactly.
+
+- `GET /api/v1/conversations` —
+  `Api\V1\Chat\ConversationController@index` (paginated 20)
+- `GET /api/v1/conversations/{id}` —
+  `Api\V1\Chat\ConversationController@show`
+  (ConversationPolicy::view enforced)
+- `GET /api/v1/conversations/{id}/messages` —
+  `Api\V1\Chat\ConversationController@messages` (cursor pagination
+  via ?before_id&limit; default 50, max 100)
+- `GET /api/v1/chat/unread-summary` —
+  `Api\V1\Chat\ConversationController@unreadSummary`
+- `POST /api/v1/messages` —
+  `Api\V1\Chat\MessageController@store` (uses
+  `App\Support\MessageIdempotency`; broadcasts MessageCreated)
+- `POST /api/v1/messages/{id}/mark-read` —
+  `Api\V1\Chat\MessageController@markRead` (broadcasts MessageRead)
+- `POST /api/v1/pusher/auth` —
+  `Api\V1\Chat\PusherAuthController@auth` (security boundary;
+  delegates to `App\Services\Chat\ChannelAuthorizer`)
+- `POST /api/v1/conversations/{id}/mute` —
+  `Api\V1\Chat\ConversationController@mute` (idempotent)
+- `POST /api/v1/conversations/{id}/leave` —
+  `Api\V1\Chat\ConversationController@leave` (broadcasts MemberLeft;
+  conversation row preserved for history)
+
 ## Payment
 
 - `POST /api/v1/payments/syriatel/initiate` —
@@ -307,12 +338,8 @@ ownership / notes.
   with `auth:sanctum`, lightweight `VenueMapResource`, and a
   composite `(latitude, longitude)` index. See "Phase 2: Home +
   Discovery" above for the canonical entry.
-- `GET /api/v1/conversations`, `/api/v1/conversations/{id}`,
-  `/api/v1/conversations/{id}/messages`,
-  `POST /api/v1/messages`, `POST /api/v1/messages/{id}/mark-read`,
-  `POST /api/v1/pusher/auth`, `/api/v1/conversations/{id}/mute`,
-  `/api/v1/conversations/{id}/leave`,
-  `/api/v1/chat/unread-summary` — Sprint 7 (Chat / Pusher).
+- ~~Chat (9 endpoints)~~ — **Resolved in Sprint 7.** All 9 live
+  under `auth:sanctum`. See "Phase 10: Chat" below.
 - ~~`POST /api/v1/teams/{id}/leave`, `POST /api/v1/teams/{id}/kick`,
   `POST /api/v1/teams/{id}/transfer-captain`,
   `POST /api/v1/teams/{id}/invite`,

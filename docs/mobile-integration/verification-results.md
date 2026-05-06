@@ -1,6 +1,6 @@
 # Mobile Integration — Verification Results
 
-**Date:** 2026-05-06 (updated after Sprint 6)
+**Date:** 2026-05-06 (updated after Sprint 7)
 **Test class root:** `tests/Feature/MobileEnvelope/`
 **Run command:** `php artisan test tests/Feature/MobileEnvelope/`
 **Spec source:** `BACKEND_REQUIREMENTS.md`
@@ -9,20 +9,21 @@
 
 | Outcome | Count | % |
 |---|---|---|
-| ✅ Match (test passes, envelope correct, status as expected) | 83 | 100% |
+| ✅ Match (test passes, envelope correct, status as expected) | 88 | 100% |
 | ⚠️ Minor mismatch (envelope OK, data field divergence) | 0 | 0% |
 | 🔴 Major mismatch (envelope wrong, or 4xx/5xx where 200 expected) | 0 | 0% |
 | ⏸️ Skipped | 0 | 0% |
-| **Total** | **83** | **100%** |
+| **Total** | **88** | **100%** |
 
 (Sprint 1 baseline: 36 ✅ / 37 🔴. Sprint 2 took the 37 reds to zero.
 Sprint 3 added `POST /wallet/pay-booking` (+1) and upgraded the four
-existing wallet endpoints from "envelope-only" to "data-shape
-verified". Sprint 4 added the six new Teams endpoints. Sprint 5
-added the two Sports Profile aggregations. Sprint 6 promoted
-`GET /venues/by-bounds` from gap to data-shape verified (+1) and
-upgraded `GET /venues/clusters` from envelope-only to data-shape
-verified — total covered now 83.)
+existing wallet endpoints to data-shape verified. Sprint 4 added the
+six new Teams endpoints. Sprint 5 added the two Sports Profile
+aggregations. Sprint 6 added `/venues/by-bounds` and upgraded
+`/venues/clusters`. Sprint 7 promoted all 9 chat endpoints from
+gap to data-shape verified — 4 read endpoints flipped from
+canonical-404 to success, and 5 new mutating/auth endpoints landed.
+Total covered now 88.)
 
 ## What changed in Sprint 2
 
@@ -167,14 +168,19 @@ indicate full match unless a row carries a Sprint-2 status note.
 | `GET /sports-profile/me` | ✅ data-shape | **Sprint 5 NEW.** Composite of stats + achievements + last 5 past bookings, 5 tests. |
 | `GET /sports-profile/weekly-activity` | ✅ data-shape | **Sprint 5 NEW.** 12-week aggregation, 15-min cache, BookingObserver invalidation, 7 tests. |
 
-### Phase 10: Chat (4 generic Social endpoints — full chat suite is Sprint 7)
+### Phase 10: Chat (9 endpoints — all live as of Sprint 7)
 
-| Method + Path | Outcome | Sprint 2 status |
+| Method + Path | Outcome | Sprint status |
 |---|---|---|
-| `GET /conversations` | ✅ | **fixed** (route absent, canonical 404 wraps) |
-| `GET /conversations/{id}` | ✅ | **fixed** (same) |
-| `GET /conversations/{id}/messages` | ✅ | **fixed** |
-| `GET /chat/unread-summary` | ✅ | **fixed** |
+| `GET /conversations` | ✅ data-shape | **Sprint 7 NEW.** Paginated, own-only filter, unread-count column, sorted by latest activity. |
+| `GET /conversations/{id}` | ✅ data-shape | **Sprint 7 NEW.** Includes participant list. ConversationPolicy::view enforced. |
+| `GET /conversations/{id}/messages` | ✅ data-shape | **Sprint 7 NEW.** Cursor pagination via `?before_id&limit` (default 50, max 100). |
+| `GET /chat/unread-summary` | ✅ data-shape | **Sprint 7 NEW.** Total + per-channel breakdown, excludes caller's own messages. |
+| `POST /messages` | ✅ data-shape | **Sprint 7 NEW.** MessageIdempotency primitive; broadcasts MessageCreated. |
+| `POST /messages/{id}/mark-read` | ✅ data-shape | **Sprint 7 NEW.** Sender-cannot-mark-own; broadcasts MessageRead. |
+| `POST /pusher/auth` | ✅ data-shape | **Sprint 7 NEW.** Security-critical. ChannelAuthorizer + 18 hijack-resistance tests covering DM/team/group + malformed/unknown patterns. |
+| `POST /conversations/{id}/mute` | ✅ data-shape | **Sprint 7 NEW.** Idempotent. |
+| `POST /conversations/{id}/leave` | ✅ data-shape | **Sprint 7 NEW.** Conversation row preserved (history). Broadcasts MemberLeft. |
 
 ## Remaining open items (✅* in tables above)
 
@@ -185,6 +191,7 @@ indicate full match unless a row carries a Sprint-2 status note.
 - ~~**`GET /venues/by-bounds`**~~ — **resolved Sprint 6.** Live with
   composite (lat, lng) index, lightweight `VenueMapResource`, sub-
   250ms perf budget verified.
-- The Phase 10 chat endpoints currently 404; full chat
-  implementation lands in Sprint 7. Until then mobile receives a
-  spec-shaped 404, which is enough for graceful degradation.
+- ~~**Phase 10 chat endpoints**~~ — **resolved Sprint 7.** All 9 live.
+  Live Pusher Debug Console smoke test (one of the B6 deliverables)
+  is deferred until real `PUSHER_*` credentials are provisioned;
+  see BLOCKERS.md.
