@@ -15,6 +15,52 @@ Format:
 
 ---
 
+## 2026-05-06 — Sprint 7 — Pusher credentials missing from `.env`
+
+**Blocker:** The Sprint 7 prompt's pre-requisite #4 stated that
+`PUSHER_APP_ID`, `PUSHER_APP_KEY`, `PUSHER_APP_SECRET`, and
+`PUSHER_APP_CLUSTER` would be present in `.env` ("Khaled confirmed
+these are ready"). Audit shows none of the four are set; the only
+broadcasting-related variable in `.env` is `BROADCAST_CONNECTION=log`.
+
+**Why:** Khaled's confirmation was about credential availability in
+principle, but the values were never actually copied into the
+project's `.env`. The Pusher Debug Console smoke test in P0.4 and
+the manual end-to-end smoke test in B6 cannot run without them.
+
+**Needs:** Khaled to set the four `PUSHER_*` env vars (and switch
+`BROADCAST_CONNECTION` to `pusher`) in the local/staging `.env`.
+Once set, the B6 smoke-test checklist can be executed against the
+real Pusher dashboard.
+
+**Workaround applied:**
+
+1. Sprint 7 proceeds in **degraded Mode B** — all code that the live
+   credentials would exercise is built and unit/feature-tested with
+   `BROADCAST_CONNECTION=log` (dev) and `BROADCAST_CONNECTION=null`
+   (testing). Tests use `Event::fake()` to assert event dispatch
+   without hitting Pusher; this is the same shape Mode-B tests
+   would have anyway.
+2. `pusher/pusher-php-server` 7.2.7 is installed.
+3. The `/pusher/auth` endpoint, `ChannelAuthorizer` service, and
+   the four broadcasting events (`MessageCreated`, `MessageRead`,
+   `MemberJoined`, `MemberLeft`) are fully implemented and tested.
+   Channel signing uses placeholder test credentials in
+   `phpunit.xml`'s `<env>` block — the HMAC computation works
+   identically against any non-empty secret, so `ChannelAuthorizer`
+   tests are not credential-blocked.
+4. Phase B6's manual Pusher Debug Console smoke test is **deferred
+   to a Khaled-driven verification step** once real credentials
+   land. CHANGELOG records this as a known-incomplete deliverable.
+5. Sprint 7 ships otherwise complete: 9 endpoints, channel auth,
+   broadcasting wiring, full test coverage.
+
+When Khaled adds the real creds, the only remaining work is to
+run the B6 manual checklist (~15 minutes) and tick its CHANGELOG
+entry.
+
+---
+
 ## 2026-05-05 — Sprint 0 — `BACKEND_REQUIREMENTS.md` not present
 
 **Blocker:** The Sprint 0 pre-requisite document is missing from the repo

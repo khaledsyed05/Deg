@@ -13,6 +13,34 @@ Format:
 
 ---
 
+## 2026-05-06 — Sprint 7 — Phase 0: Pusher infrastructure (degraded mode)
+
+**Decision:** Sprint 7 proceeds in **degraded Mode B**. The pre-requisite
+stated `PUSHER_*` env vars would be present; audit shows none of the four
+are set. Per BLOCKERS.md entry, this is logged as a Khaled-driven follow-up
+without halting the sprint. Code that depends on the credentials (channel
+HMAC signing, the live Debug-Console smoke test) is built and unit-tested
+with placeholder secrets; the manual Debug-Console verification is
+deferred until real creds land (estimated 15 minutes once unblocked).
+
+**Verified:**
+- `pusher/pusher-php-server` ^7.2 installed (resolved 7.2.7).
+- `BROADCAST_CONNECTION=log` in `.env` (default — Laravel will write
+  events to laravel.log instead of Pusher; safe for dev without creds).
+- `BROADCAST_CONNECTION=null` in `phpunit.xml` (tests dispatch via
+  `Event::fake()` only).
+- Test-only `PUSHER_APP_*` placeholders added to `phpunit.xml` so
+  HMAC signing math runs deterministically inside `ChannelAuthorizer`
+  tests.
+
+**Implications:** `/pusher/auth` returns valid signatures in tests against
+the placeholder secret; in dev, channel-auth tests still pass and the
+controller still 200s, but real-time delivery is `BROADCAST_CONNECTION=log`
+until creds are provisioned. The hijack-prevention coverage is unaffected
+— it's pure PHP membership logic that doesn't depend on Pusher at all.
+
+---
+
 ## 2026-05-06 — Sprint 6 — `GET /venues/by-bounds` shipped
 
 **Decision:** Build the bounding-box query as the headline of
