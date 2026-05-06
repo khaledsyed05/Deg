@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Chat;
 
+use App\Events\Chat\MemberLeft;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Chat\ConversationDetailResource;
 use App\Http\Resources\Chat\ConversationListResource;
@@ -62,12 +63,53 @@ class ConversationController extends Controller
 
     public function mute(int $id, Request $request): JsonResponse
     {
-        return $this->error('Not yet implemented', null, 501);
+        $conversation = Conversation::findOrFail($id);
+
+        $this->authorize('mute', $conversation);
+
+        $participant = $conversation->participants()
+            ->where('user_id', $request->user()->id)
+            ->whereNull('left_at')
+            ->first();
+
+        if (! $participant) {
+            return $this->forbidden();
+        }
+
+        if ($participant->muted_at === null) {
+            $participant->update(['muted_at' => now()]);
+        }
+
+        return $this->success([
+            'conversation_id' => $conversation->id,
+            'muted' => true,
+            'muted_at' => $participant->fresh()->muted_at?->toIso8601String(),
+        ]);
     }
 
     public function leave(int $id, Request $request): JsonResponse
     {
-        return $this->error('Not yet implemented', null, 501);
+        $conversation = Conversation::findOrFail($id);
+
+        $this->authorize('leave', $conversation);
+
+        $participant = $conversation->participants()
+            ->where('user_id', $request->user()->id)
+            ->whereNull('left_at')
+            ->first();
+
+        if (! $participant) {
+            return $this->forbidden();
+        }
+
+        $participant->update(['left_at' => now()]);
+
+        event(new MemberLeft($conversation, $request->user()->id));
+
+        return $this->success([
+            'conversation_id' => $conversation->id,
+            'left_at' => $participant->fresh()->left_at?->toIso8601String(),
+        ]);
     }
 
     public function unreadSummary(Request $request): JsonResponse
