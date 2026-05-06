@@ -119,17 +119,15 @@ Route::prefix('v1')->group(function () {
     Route::get('cities/{id}', [PublicGeographyController::class, 'show'])->whereNumber('id');
     Route::get('cities/{id}/neighborhoods', [PublicGeographyController::class, 'neighborhoods'])->whereNumber('id');
 
-    // Geography — DEPRECATED aliases (kept one sprint for back-compat;
-    // mobile / web should migrate to the canonical paths above. Remove
-    // after Sprint 3 confirms no consumers remain.)
+    // Geography — kept (no canonical mobile equivalent; web admin uses
+    // these for country/state pickers in venue/club registration forms.
+    // Cities/popular, cities/{id}, and venues/clusters were removed in
+    // Sprint 8 — callers must use the canonical paths above.)
     Route::prefix('geography')->group(function () {
         Route::get('countries', [PublicGeographyController::class, 'countries']);
         Route::get('countries/{iso2}/states', [PublicGeographyController::class, 'statesByCountry']);
         Route::get('states/{stateId}/cities', [PublicGeographyController::class, 'citiesByState'])->whereNumber('stateId');
-        Route::get('cities/popular', [PublicGeographyController::class, 'popularCities']);
-        Route::get('cities/{id}', [PublicGeographyController::class, 'show'])->whereNumber('id');
         Route::post('detect', [PublicGeographyController::class, 'detect']);
-        Route::get('venues/clusters', [PublicGeographyController::class, 'venueClusters']);
     });
 
     // App metadata — public (Phase 14)
