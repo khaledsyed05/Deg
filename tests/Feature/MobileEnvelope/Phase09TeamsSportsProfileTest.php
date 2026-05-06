@@ -8,8 +8,8 @@ use App\Models\User;
 use Tests\MobileIntegrationTest;
 
 /**
- * Phase 9 — Teams + Sports Profile — 11 covered endpoints
- * (5 from Sprint 1 verification + 6 added in Sprint 4).
+ * Phase 9 — Teams + Sports Profile — 13 covered endpoints
+ * (5 from Sprint 1 + 6 added in Sprint 4 + 2 added in Sprint 5).
  *
  * Teams (Sprint 1):
  * - GET /teams
@@ -24,9 +24,13 @@ use Tests\MobileIntegrationTest;
  * - POST /teams/{id}/invite
  * - GET /teams/invite/{code}
  *
- * Sports Profile:
+ * Sports Profile (Sprint 1):
  * - GET /profile/stats
  * - GET /profile/achievements
+ *
+ * Sports Profile (Sprint 5 — new):
+ * - GET /sports-profile/me
+ * - GET /sports-profile/weekly-activity
  */
 class Phase09TeamsSportsProfileTest extends MobileIntegrationTest
 {
@@ -151,6 +155,30 @@ class Phase09TeamsSportsProfileTest extends MobileIntegrationTest
         $this->actingAsRole('player');
 
         $response = $this->getJson("/api/v1/teams/invite/{$invite->code}");
+
+        $response->assertOk();
+        $this->assertEnvelope($response);
+    }
+
+    // ========================================================================
+    // Sprint 5 — two new sports-profile endpoints
+    // ========================================================================
+
+    public function test_get_sports_profile_me_returns_envelope(): void
+    {
+        $this->actingAsRole('player');
+
+        $response = $this->getJson('/api/v1/sports-profile/me');
+
+        $response->assertOk();
+        $this->assertEnvelope($response);
+    }
+
+    public function test_get_sports_profile_weekly_activity_returns_envelope(): void
+    {
+        $this->actingAsRole('player');
+
+        $response = $this->getJson('/api/v1/sports-profile/weekly-activity');
 
         $response->assertOk();
         $this->assertEnvelope($response);
