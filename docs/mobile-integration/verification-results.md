@@ -1,6 +1,6 @@
 # Mobile Integration — Verification Results
 
-**Date:** 2026-05-05 (updated after Sprint 2)
+**Date:** 2026-05-06 (updated after Sprint 4)
 **Test class root:** `tests/Feature/MobileEnvelope/`
 **Run command:** `php artisan test tests/Feature/MobileEnvelope/`
 **Spec source:** `BACKEND_REQUIREMENTS.md`
@@ -9,16 +9,18 @@
 
 | Outcome | Count | % |
 |---|---|---|
-| ✅ Match (test passes, envelope correct, status as expected) | 74 | 100% |
+| ✅ Match (test passes, envelope correct, status as expected) | 80 | 100% |
 | ⚠️ Minor mismatch (envelope OK, data field divergence) | 0 | 0% |
 | 🔴 Major mismatch (envelope wrong, or 4xx/5xx where 200 expected) | 0 | 0% |
 | ⏸️ Skipped | 0 | 0% |
-| **Total** | **74** | **100%** |
+| **Total** | **80** | **100%** |
 
 (Sprint 1 baseline: 36 ✅ / 37 🔴. Sprint 2 took the 37 reds to zero.
-Sprint 3 adds `POST /wallet/pay-booking` (+1) and upgrades the four
+Sprint 3 added `POST /wallet/pay-booking` (+1) and upgraded the four
 existing wallet endpoints from "envelope-only" to "data-shape
-verified".)
+verified". Sprint 4 added the six new Teams endpoints (PUT
+/teams/{id}, DELETE /teams/{id}, kick, transfer-captain, invite,
+use-invite) — total covered now 80.)
 
 ## What changed in Sprint 2
 
@@ -146,12 +148,19 @@ indicate full match unless a row carries a Sprint-2 status note.
 | `POST /wallet/topup` | ✅ envelope | unchanged |
 | `POST /wallet/pay-booking` | ✅ end-to-end | **Sprint 3 NEW.** Atomic + idempotent, 13 dedicated tests. |
 
-### Phase 9: Teams + Sports Profile (5 endpoints)
+### Phase 9: Teams + Sports Profile (11 endpoints)
 
-| Method + Path | Outcome | Sprint 2 status |
+| Method + Path | Outcome | Sprint status |
 |---|---|---|
 | `GET /teams`, `POST /teams` | ✅ | unchanged |
-| `GET /teams/{id}` | ✅ | **fixed** (404 envelope wrapped) |
+| `GET /teams/{id}` | ✅ | Sprint 2: 404 envelope wrapped |
+| `PUT /teams/{id}/leave` | ✅ | Sprint 1: data-shape (Phase 18 work) |
+| `PUT /teams/{id}` | ✅ data-shape | **Sprint 4 NEW.** Captain/admin update, policy-driven auth, 7 tests. |
+| `DELETE /teams/{id}` | ✅ data-shape | **Sprint 4 NEW.** Hard delete with FK cascade, 7 tests. |
+| `POST /teams/{id}/kick` | ✅ data-shape | **Sprint 4 NEW.** Captain/admin kick member, 8 tests. |
+| `POST /teams/{id}/transfer-captain` | ✅ data-shape | **Sprint 4 NEW.** Captain-only (admin denied by design), 7 tests. |
+| `POST /teams/{id}/invite` | ✅ data-shape | **Sprint 4 NEW.** 5-active-invite cap, 9 tests. |
+| `GET /teams/invite/{code}` | ✅ data-shape | **Sprint 4 NEW.** Idempotent rejoin, expired/used-up 410, 8 tests. |
 | `GET /profile/stats`, `/profile/achievements` | ✅ | unchanged |
 
 ### Phase 10: Chat (4 generic Social endpoints — full chat suite is Sprint 7)
@@ -165,7 +174,10 @@ indicate full match unless a row carries a Sprint-2 status note.
 
 ## Remaining open items (✅* in tables above)
 
-- **`POST /auth/register`** — handed to Sprint 3.
+- ~~**`POST /auth/register`**~~ — **resolved Sprint 4 Phase 0.** No
+  separate registration endpoint by design. New users complete profile
+  via `PUT /profile` after OTP verification. `data.is_new_user` flag
+  added to `/auth/otp/verify` and `/auth/google` for mobile branching.
 - **`GET /venues/by-bounds`** — handed to Sprint 6 (Maps).
 - The Phase 10 chat endpoints currently 404; full chat
   implementation lands in Sprint 7. Until then mobile receives a

@@ -201,6 +201,30 @@ ownership / notes.
 - `POST /api/v1/wallet/transfer` —
   `Api\V1\WalletController@transfer`
 
+## Phase 9: Teams + Sports Profile
+
+- `GET /api/v1/teams` — `Api\V1\TeamController@index`
+- `POST /api/v1/teams` — `Api\V1\TeamController@store`
+- `GET /api/v1/teams/{id}` — `Api\V1\TeamController@show`
+- `PUT /api/v1/teams/{id}` — `Api\V1\TeamController@update`
+  (new in Sprint 4; captain-or-admin only via TeamPolicy@update)
+- `DELETE /api/v1/teams/{id}` — `Api\V1\TeamController@destroy`
+  (new in Sprint 4; captain-or-admin only; FK cascades remove
+  team_members and team_invites)
+- `POST /api/v1/teams/{id}/kick` — `Api\V1\TeamController@kick`
+  (new in Sprint 4; captain-or-admin removes a member)
+- `POST /api/v1/teams/{id}/transfer-captain` —
+  `Api\V1\TeamController@transferCaptain` (new in Sprint 4;
+  captain-only by design — admins are NOT allowed)
+- `POST /api/v1/teams/{id}/invite` —
+  `Api\V1\TeamController@generateInvite` (new in Sprint 4;
+  captain-or-admin; max 5 active invites per team)
+- `GET /api/v1/teams/invite/{code}` —
+  `Api\V1\TeamController@useInvite` (new in Sprint 4;
+  authenticated; idempotent for already-members)
+- `PUT /api/v1/teams/{id}/leave` — `Api\V1\TeamController@leave`
+  (Phase 18 work; not part of Sprint 4 scope)
+
 ## Payment
 
 - `POST /api/v1/payments/syriatel/initiate` —
@@ -262,10 +286,12 @@ ownership / notes.
   `POST /api/v1/pusher/auth`, `/api/v1/conversations/{id}/mute`,
   `/api/v1/conversations/{id}/leave`,
   `/api/v1/chat/unread-summary` — Sprint 7 (Chat / Pusher).
-- `POST /api/v1/teams/{id}/leave`, `POST /api/v1/teams/{id}/kick`,
+- ~~`POST /api/v1/teams/{id}/leave`, `POST /api/v1/teams/{id}/kick`,
   `POST /api/v1/teams/{id}/transfer-captain`,
   `POST /api/v1/teams/{id}/invite`,
-  `GET /api/v1/teams/invite/{code}` — later sprint (Teams).
+  `GET /api/v1/teams/invite/{code}`~~ — **Resolved in Sprint 4.**
+  All five (plus `PUT /teams/{id}` and `DELETE /teams/{id}`) are
+  now live. See "Phase 9: Teams + Sports Profile" above.
 - `GET /api/v1/sports-profile/me`,
   `GET /api/v1/sports-profile/weekly-activity` — later sprint
   (Sports Profile).

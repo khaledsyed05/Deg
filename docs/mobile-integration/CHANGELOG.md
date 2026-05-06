@@ -13,6 +13,93 @@ Format:
 
 ---
 
+## 2026-05-06 — Sprint 4 — Canonical auth flow (Phase 0)
+
+**Decision:** Reject the `POST /auth/register` line item from the spec.
+The canonical auth flow is OTP-only: send → verify → branch on
+`is_new_user`. New users complete profile via `PUT /profile`. Backend
+now exposes `data.is_new_user` on `/auth/otp/verify` and
+`/auth/google` so mobile can branch correctly. `/auth/otp/send` now
+accepts an optional `channel` ∈ {whatsapp, sms} param mobile uses to
+override Baileys auto-detection.
+**Rationale:** The spec line item is wrong terminology. Khaled
+confirmed in the Sprint 4 prompt that there is no separate registration
+endpoint by design. Two prior sprints had deferred this; closing
+permanently before any feature code unblocks downstream sprints.
+**Files affected:** `BACKEND_REQUIREMENTS.md`,
+`app/Http/Controllers/Api/V1/AuthController.php`,
+`app/Http/Requests/Api/V1/Auth/LoginOtpSendRequest.php`,
+`app/Services/Auth/OtpService.php`,
+`tests/Feature/MobileEnvelope/Phase01AuthTest.php`,
+`docs/mobile-integration/decision-matrix.md`,
+`docs/mobile-integration/api-paths-canonical.md`.
+
+---
+
+## 2026-05-06 — Sprint 4 — TeamPolicy + 6 new endpoints
+
+**Decision:** Build PUT /teams/{id}, DELETE /teams/{id},
+POST /teams/{id}/kick, POST /teams/{id}/transfer-captain,
+POST /teams/{id}/invite, GET /teams/invite/{code}. Authorization via
+a single `TeamPolicy` registered in `AuthServiceProvider`. All 6
+endpoints sit under `auth:sanctum`. Hard delete (no soft-delete on
+teams). Invites use codes, not direct user lookups; max 5 active
+invites per team.
+**Rationale:** Spec required these endpoints. Centralizing auth in
+a Policy class (vs scattered inline controller checks) anchors the
+authorization matrix in one tested module — every regression in any
+endpoint is caught immediately.
+**Files affected:** new — `app/Policies/TeamPolicy.php`,
+`app/Models/TeamInvite.php`,
+`database/migrations/2026_05_06_085318_create_team_invites_table.php`,
+`app/Services/Team/{Delete,Kick,Transfer,GenerateInvite,UseInvite}…`,
+`app/Http/Resources/Team/{TeamResource,TeamInviteResource}.php`,
+`app/Http/Requests/Api/V1/Team/{Update,Kick,Transfer,GenerateInvite}…`,
+`app/Exceptions/Team/{TeamFull,InviteExpired,InviteUsedUp,
+CannotKickCaptain,CannotTransferToNonMember,TooManyInvites}…`,
+`lang/{en,ar}/team.php`, `database/factories/{Team,TeamMember,
+TeamInvite,VenueCategory}Factory.php`,
+`tests/Feature/Team/*` (6 files, 46 endpoint tests),
+`tests/Feature/Team/TeamPolicyTest.php` (28 policy tests). Modified —
+`app/Models/{Team,TeamMember}.php`,
+`app/Http/Controllers/Api/V1/TeamController.php`,
+`app/Providers/AuthServiceProvider.php`, `routes/api.php`,
+`tests/Feature/MobileEnvelope/Phase09TeamsSportsProfileTest.php`.
+
+---
+
+## 2026-05-06 — Sprint 4 — Transfer-captain is captain-only
+
+**Decision:** Even users with the `admin` role cannot use
+`POST /teams/{id}/transfer-captain`. Only the team's current captain
+can initiate the transfer.
+**Rationale:** Captaincy is an end-user social construct, not a
+moderation primitive. If admins ever need to forcibly hand off
+ownership, the Filament dashboard is the right surface — exposing
+that on the mobile API would be a footgun. Mirrors the pattern
+already used in `ClubPolicy::manageStaff` (owner-only).
+**Files affected:** `app/Policies/TeamPolicy.php` (transferCaptain
+method), `tests/Feature/Team/TeamPolicyTest.php` (explicit denial
+test), `tests/Feature/Team/TransferCaptainTest.php` (HTTP-level
+denial test).
+
+---
+
+## 2026-05-06 — Sprint 4 — Idempotency primitive not used for teams
+
+**Decision:** Team-mutating endpoints (kick / transfer / invite /
+use-invite) do not use `App\Support\Idempotency::run()`. They rely
+on unique indexes (`team_members(team_id, user_id)`,
+`team_invites.code`) plus DB transactions for atomicity.
+**Rationale:** `App\Support\Idempotency` returns a
+`WalletTransaction` and is wallet-typed. Refactoring it to be
+generic is its own task, not part of Sprint 4. The Sprint 4 prompt
+suggested using it, but the type signature would have required
+re-typing the helper across the wallet codebase — out of scope.
+**Files affected:** none (decision recorded only).
+
+---
+
 ## 2026-05-05 — Sprint 0 — Default branch resolution
 
 **Decision:** Branch `feature/mobile-integration` is cut from `master`, not

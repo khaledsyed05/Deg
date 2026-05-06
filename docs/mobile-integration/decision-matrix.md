@@ -192,3 +192,33 @@ recommended action and who owns it?
   team-mutating operation (kick / transfer-captain) and any
   payment retry. Documented in the Sprint 4 recommendations
   section of the Sprint 3 completion report.
+
+---
+
+## Sprint 4 status (2026-05-06)
+
+- **Finding 6 — `/auth/register` route missing.** **Resolved
+  permanently in Phase 0** (see updated note above). Spec corrected,
+  `is_new_user` flag added to OTP-verify and Google sign-in, two new
+  tests assert the flag for new vs. existing users.
+- **Six new team endpoints live with policy-based authorization:**
+  PUT /teams/{id}, DELETE /teams/{id}, POST /teams/{id}/kick, POST
+  /teams/{id}/transfer-captain, POST /teams/{id}/invite, GET
+  /teams/invite/{code}. TeamPolicy registered in
+  AuthServiceProvider with 28 dedicated policy tests.
+- **Authorization design choice:** transfer-captain is captain-only
+  by design — even admins cannot forcibly hand off captaincy. If
+  moderation needs that, it lives in the Filament dashboard, not the
+  mobile API.
+- **New table:** `team_invites` (code, expires_at, max_uses,
+  uses_count). 5 active invites per team is the cap; expired or
+  used-up invites are excluded.
+- **Test count:** Sprint 3 ended at 404 passing. Sprint 4 adds
+  ~81 new tests (28 policy + 7 update + 7 delete + 8 kick + 7
+  transfer + 9 invite + 8 use-invite + 6 envelope + 1 net auth from
+  Phase 0). Final total: 485 passing / 0 failing.
+- **Idempotency note:** Team mutations rely on unique indexes
+  (team_members(team_id, user_id), team_invites.code) and DB
+  transactions; the `App\Support\Idempotency` primitive is wallet-
+  typed and not reused. If a generic primitive is needed later,
+  that's its own task.
