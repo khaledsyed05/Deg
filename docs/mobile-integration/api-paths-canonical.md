@@ -313,42 +313,48 @@ message_reads). Channel naming convention follows
 
 ---
 
-## Deprecated paths (kept temporarily as aliases — remove after Sprint 3)
+## Geography (kept under /geography prefix — no canonical mobile path)
 
-- `GET /api/v1/geography/cities/popular` → use
-  `GET /api/v1/cities`.
-- `GET /api/v1/geography/cities/{id}` → use
-  `GET /api/v1/cities/{id}`.
-- `GET /api/v1/geography/venues/clusters` → use
-  `GET /api/v1/venues/clusters`.
-- `GET /api/v1/geography/countries`,
-  `/api/v1/geography/countries/{iso2}/states`,
-  `/api/v1/geography/states/{stateId}/cities`,
-  `POST /api/v1/geography/detect` — kept for now; the spec doesn't
-  surface them under canonical names, but the dashboard still calls
-  them.
+- `GET /api/v1/geography/countries`
+- `GET /api/v1/geography/countries/{iso2}/states`
+- `GET /api/v1/geography/states/{stateId}/cities`
+- `POST /api/v1/geography/detect`
 
-## Missing routes (gaps for future sprints)
+The web admin's country/state pickers (venue/club registration
+forms) call these. Spec doesn't surface mobile equivalents because
+mobile only uses `/cities`. Sprint 8 removed the redundant aliases
+that overlapped with `/cities` and `/venues/clusters`.
 
-- ~~`POST /api/v1/auth/register`~~ — **Resolved in Sprint 4 Phase 0.**
-  No separate `/auth/register` endpoint exists by design. New-user
-  profile completion uses `PUT /profile` after OTP verification;
-  mobile branches on `data.is_new_user` from `/auth/otp/verify`.
-- ~~`GET /api/v1/venues/by-bounds`~~ — **Resolved in Sprint 6.** Live
-  with `auth:sanctum`, lightweight `VenueMapResource`, and a
-  composite `(latitude, longitude)` index. See "Phase 2: Home +
-  Discovery" above for the canonical entry.
-- ~~Chat (9 endpoints)~~ — **Resolved in Sprint 7.** All 9 live
-  under `auth:sanctum`. See "Phase 10: Chat" below.
-- ~~`POST /api/v1/teams/{id}/leave`, `POST /api/v1/teams/{id}/kick`,
-  `POST /api/v1/teams/{id}/transfer-captain`,
-  `POST /api/v1/teams/{id}/invite`,
-  `GET /api/v1/teams/invite/{code}`~~ — **Resolved in Sprint 4.**
-  All five (plus `PUT /teams/{id}` and `DELETE /teams/{id}`) are
-  now live. See "Phase 9: Teams + Sports Profile" above.
-- ~~`GET /api/v1/sports-profile/me`,
-  `GET /api/v1/sports-profile/weekly-activity`~~ — **Resolved in
-  Sprint 5.** Both live. See "Phase 9: Teams + Sports Profile" above.
-- `GET /api/v1/coupons/my`, `/api/v1/coupons/{id}`,
-  `/api/v1/coupons/validate`, `/api/v1/coupons/redeem` — Sprint 4
-  (Coupons; tracked under Promotions in current code).
+## Rate limits
+
+Per Sprint 8 B1. Tunable in `AppServiceProvider::registerRateLimiters()`.
+
+| Endpoint group | Limiter | Rate |
+|---|---|---|
+| `/auth/otp/send`, `/otp/resend`, `/google` | `auth-otp-send` | 3/min/phone + 10/hour/IP |
+| `/auth/otp/verify` | `auth-otp-verify` | 5 per 10min/phone |
+| `/payments/*` POSTs + `/wallet/topup`, `/pay-booking`, `/transfer`, `/withdraw` | `payments` | 10/hour/user |
+| `POST /messages` | `chat-send` | 60/min/user |
+| `POST /messages/{id}/mark-read` | `chat-mark-read` | 200/min/user |
+| `POST /pusher/auth` | `pusher-auth` | 60/min/user |
+| `PUT /profile`, `POST/DELETE /profile/avatar`, `PUT /profile/notifications` | `profile-mutations` | 20/hour/user |
+| `POST /teams/{id}/invite` | `team-invites` | 10/hour/team |
+| `POST /bookings` | `bookings-create` | 30/hour/user |
+| `POST /conversations/{id}/{mute,leave}`, `POST /wallet/redeem` etc. | `default-mutations` | 60/min/user |
+
+GET endpoints are NOT throttled — the abuse vectors are all on
+writes.
+
+## Webhook signature verification
+
+Per Sprint 8 B3. Applied via `verify.webhook:{provider}` middleware.
+
+- `POST /api/webhooks/syriatel/callback` — verified against
+  `services.syriatel.webhook_secret`
+- `POST /api/webhooks/mtn/callback` — verified against
+  `services.mtn.webhook_secret`
+
+`PAYMENT_VERIFY_SIGNATURES=true` in production enables enforcement.
+Default false in dev/sandbox. Other providers (Fatora, Bank,
+SamaPay) are a one-line follow-up once their secrets land in
+config.

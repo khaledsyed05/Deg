@@ -13,6 +13,79 @@ Format:
 
 ---
 
+## 2026-05-06 — Sprint 8 (FINAL) — Hardening: rate limits + audit logs + webhook sigs
+
+**Decision:** Sprint 8 closes the integration plan with cross-cutting
+production-readiness work — no new features. Five workstreams:
+rate limiting, audit logging, webhook signatures, Pusher live
+verification (deferred), and final cleanup.
+**Rationale:** Endpoints from Sprints 0–7 were correct but
+unprotected. Production readiness requires abuse prevention,
+authoritative audit trails for financial/authorization mutations,
+and signature verification on inbound payment webhooks. Without
+these, week-1 exploitation is plausible.
+**Files affected:** new — `app/Support/WebhookSignature.php`,
+`app/Http/Middleware/VerifyWebhookSignature.php`,
+`tests/Feature/RateLimiting/RateLimitsTest.php`,
+`tests/Feature/AuditLog/AuditLogTest.php`,
+`tests/Unit/WebhookSignatureTest.php`,
+`tests/Feature/Webhook/SignatureVerificationTest.php`,
+`lang/{en,ar}/api.php`,
+`docs/mobile-integration/sprint-8-discovery.md`. Modified —
+`app/Providers/AppServiceProvider.php` (10 `RateLimiter::for`
+registrations),
+`bootstrap/app.php` (verify.webhook alias + 429 envelope with
+retry_after),
+`config/services.php` (syriatel + mtn webhook config blocks),
+`routes/api.php` (throttle middleware on every abuse-prone route +
+verify.webhook on Syriatel/MTN + deprecated geography alias removal),
+`app/Services/Wallet/PayBookingService.php` (audit log call),
+`app/Services/Team/{KickMember,TransferCaptain}Service.php` (audit
+log calls),
+`app/Http/Controllers/Api/V1/{Wallet,Auth}Controller.php` (audit log
+calls), `tests/Feature/Geography/GeographyEndpointsTest.php`
+(updated to canonical paths). Deleted —
+`app/Jobs/Wallet/CheckAutoTopupJob.php` (out of integration-plan
+scope).
+
+---
+
+## 2026-05-06 — Sprint 8 — Audit log: reuse existing model
+
+**Decision:** Reuse the pre-existing `App\Models\AuditLog` (created
+before the integration plan started, used only by admin panels)
+rather than create a parallel one as the Sprint 8 prompt's spec
+example suggested.
+**Rationale:** Per the prompt's anti-pattern: "do NOT create
+multiple audit log models." The existing schema differs slightly
+from the prompt's example (uses `subject_*` not `auditable_*`,
+`changes` not `metadata`, no `user_agent` column or
+`(user_id, created_at)` composite index) but the call shape is
+identical and the indexing is sufficient for the read patterns
+the security review process needs. Adding a second table would
+have created a parallel-audit-trail nightmare.
+**Files affected:** `app/Models/AuditLog.php` (no change — reused);
+5 call sites across wallet/team/auth.
+
+---
+
+## 2026-05-06 — Sprint 8 — Pusher live smoke test STILL deferred
+
+**Decision:** Per the time-box (≤2 hours), Sprint 8 B4 retried
+the Sprint 7 smoke test once. `PUSHER_*` env vars are still
+unset. Sprint 8 documented a 7-step ~15-minute resolution
+runbook for Khaled in BLOCKERS.md and moved on.
+**Rationale:** The Sprint 8 prompt's anti-pattern: "Don't burn
+2 days on credential debugging." Code is fully shipped and unit-
+test pinned (Sprint 7's `BroadcastingTest`). The remaining work is
+empirical confirmation that the broadcasting code correctly
+publishes to a real Pusher app — once creds are in place, the
+runbook produces that confirmation in minutes.
+**Files affected:** `docs/mobile-integration/BLOCKERS.md`
+(runbook added).
+
+---
+
 ## 2026-05-06 — Sprint 7 — 9 chat endpoints + channel authorization
 
 **Decision:** Build the full chat suite (9 endpoints), four broadcast

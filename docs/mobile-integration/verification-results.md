@@ -1,9 +1,28 @@
 # Mobile Integration — Verification Results
 
-**Date:** 2026-05-06 (updated after Sprint 7)
+**Date:** 2026-05-06 (updated after Sprint 8 — FINAL)
 **Test class root:** `tests/Feature/MobileEnvelope/`
 **Run command:** `php artisan test tests/Feature/MobileEnvelope/`
 **Spec source:** `BACKEND_REQUIREMENTS.md`
+
+## Production-readiness checklist
+
+| Concern | Status | Sprint shipped |
+|---|---|---|
+| Envelope conformance on every response | ✅ | Sprint 2 |
+| Idempotency on retry-prone wallet writes | ✅ | Sprint 3 |
+| Idempotency on retry-prone chat writes | ✅ | Sprint 7 |
+| Authorization policies (Team, Conversation) | ✅ | Sprints 4 + 7 |
+| Driver-aware queries for cross-env portability | ✅ | Sprints 2, 5, 6 |
+| Caching with observer-driven invalidation | ✅ | Sprint 5 (weekly), Sprint 6 (clusters) |
+| Rate limiting on abuse-prone endpoints | ✅ | **Sprint 8 B1** |
+| Audit logging on financial / authorization mutations | ✅ | **Sprint 8 B2** |
+| Webhook signature verification (HMAC-SHA256, `hash_equals`) | ✅ | **Sprint 8 B3** |
+| Pusher live verification (Debug Console) | ⚠️ blocked | Sprint 8 B4 — runbook in BLOCKERS.md |
+
+The single warning above is the deferred Pusher live smoke test.
+Code is fully shipped; what's missing is the manual Debug Console
+verification, blocked on Khaled provisioning `PUSHER_*` env vars.
 
 ## Summary
 

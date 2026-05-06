@@ -313,3 +313,40 @@ recommended action and who owns it?
   optional), message editing, message reactions, real upload
   pipeline for attachments (Sprint 8), admin override on chat
   content.
+
+---
+
+## Sprint 8 status (2026-05-06) — FINAL SPRINT
+
+- **Rate limiting matrix shipped.** 10 named limiters in
+  `AppServiceProvider::registerRateLimiters()`, applied via
+  `throttle:` middleware to every abuse-prone POST/PUT/DELETE on
+  the mobile API (auth-otp, payments, chat-send, mark-read,
+  pusher-auth, profile-mutations, team-invites, bookings-create,
+  default-mutations). 6 tests in `RateLimitsTest`.
+- **Audit logging wired into mobile-facing mutations.** The
+  `AuditLog` model + table existed pre-Sprint-8 (admin panels
+  only). Sprint 8 added 5 call sites: pay-booking, team kick,
+  team transfer-captain, wallet settings change, auth login (with
+  `is_new_user` flag). 6 tests in `AuditLogTest`.
+- **Webhook signature verification.** `WebhookSignature` primitive
+  (constant-time `hash_equals`, never `==`) plus
+  `VerifyWebhookSignature` middleware applied to Syriatel and MTN
+  callbacks. Other providers (Fatora, Bank, SamaPay) are a
+  one-line follow-up once their secrets land in config. 12 tests
+  (6 unit + 6 feature).
+- **Pusher live smoke test STILL blocked.** Sprint 8 B4 retried
+  per the time-box; `PUSHER_*` env vars are still unset. BLOCKERS
+  entry now contains a 7-step ~15-minute runbook for Khaled.
+- **Cleanup completed:** deprecated `/geography/cities/popular`,
+  `/geography/cities/{id}`, `/geography/venues/clusters` aliases
+  removed (canonical paths since Sprint 2). Auto-topup stub
+  deleted — separate project, not integration-plan scope.
+
+### All findings: closed
+
+Every finding from Sprints 0–1 plus every deferred decision from
+Sprints 2–7 is now either resolved (✅ in the production-readiness
+table) or explicitly deferred with a documented trigger condition
+(server-side venue clustering, WhatsApp Business integration,
+auto-topup execution, real attachment upload pipeline).
