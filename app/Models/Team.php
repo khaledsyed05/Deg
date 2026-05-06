@@ -4,12 +4,15 @@ namespace App\Models;
 
 use App\Enums\TeamRole;
 use App\Enums\TeamType;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Team extends Model
 {
+    use HasFactory;
+
     protected $guarded = [];
 
     protected function casts(): array
@@ -102,5 +105,10 @@ class Team extends Model
             'status' => 'invited',
             'invited_by' => $invitedBy,
         ]);
+    }
+
+    public function invites(): HasMany
+    {
+        return $this->hasMany(TeamInvite::class);
     }
 }
