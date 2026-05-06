@@ -165,6 +165,31 @@ class Venue extends Model implements HasMedia, Sortable
         });
     }
 
+    /**
+     * Filter venues to those inside a lat/lng bounding box. The box is
+     * specified by its north/south latitudes and east/west longitudes
+     * (inclusive on all four sides — `whereBetween` is inclusive).
+     *
+     * Portable across MySQL / MariaDB / SQLite — `BETWEEN` semantics
+     * for our `decimal(10,8)` / `decimal(11,8)` lat/lng columns are
+     * identical across drivers, so no driver branch is required here
+     * (unlike `scopeNearby`, which needs trig helpers).
+     *
+     * Limitation: does NOT handle the antimeridian case (a box that
+     * crosses ±180° longitude, where `west > east`). For Syria — and
+     * for any single-country viewport — this is fine. If a global
+     * deployment ever needs it, split the query into two unioned
+     * calls.
+     */
+    public function scopeWithinBounds(Builder $query, float $north, float $south, float $east, float $west): Builder
+    {
+        return $query
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->whereBetween('latitude', [$south, $north])
+            ->whereBetween('longitude', [$west, $east]);
+    }
+
     public function scopeNearby(Builder $query, float $latitude, float $longitude, float $radiusKm = 10): Builder
     {
         $query->whereNotNull('latitude')->whereNotNull('longitude');
