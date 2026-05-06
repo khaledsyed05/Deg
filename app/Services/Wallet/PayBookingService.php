@@ -6,6 +6,7 @@ use App\Enums\BookingStatus;
 use App\Enums\CreditType;
 use App\Exceptions\Wallet\BookingNotPayableException;
 use App\Exceptions\Wallet\InsufficientBalanceException;
+use App\Models\AuditLog;
 use App\Models\Booking;
 use App\Models\User;
 use App\Models\Wallet;
@@ -88,6 +89,18 @@ class PayBookingService
                     ])
                     ->event('wallet.pay_booking')
                     ->log('Booking paid from wallet');
+
+                AuditLog::record(
+                    action: 'wallet.pay_booking',
+                    userId: $user->id,
+                    subject: $booking,
+                    changes: [
+                        'wallet_transaction_id' => $transaction->id,
+                        'amount' => $amount,
+                        'idempotency_key' => $idempotencyKey,
+                    ],
+                    ip: request()?->ip(),
+                );
 
                 return $transaction;
             });

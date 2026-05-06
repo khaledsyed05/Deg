@@ -8,6 +8,7 @@ use App\Http\Requests\Api\V1\Auth\LoginOtpSendRequest;
 use App\Http\Requests\Api\V1\Auth\LoginOtpVerifyRequest;
 use App\Http\Resources\UserResource;
 use App\Http\Traits\ApiResponse;
+use App\Models\AuditLog;
 use App\Models\User;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Services\Auth\FirebaseAuthService;
@@ -134,6 +135,14 @@ class AuthController extends Controller
             ->performedOn($user)
             ->event($isNewUser ? 'registered_via_otp' : 'logged_in_via_otp')
             ->log($isNewUser ? 'New user registered via OTP' : 'User logged in via OTP');
+
+        AuditLog::record(
+            action: 'auth.login',
+            userId: $user->id,
+            subject: $user,
+            changes: ['is_new_user' => $isNewUser, 'method' => 'otp'],
+            ip: $request->ip(),
+        );
 
         $token = $user->createToken('mobile-app')->plainTextToken;
 

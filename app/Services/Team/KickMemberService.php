@@ -3,6 +3,7 @@
 namespace App\Services\Team;
 
 use App\Exceptions\Team\CannotKickCaptainException;
+use App\Models\AuditLog;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\User;
@@ -41,5 +42,13 @@ class KickMemberService
                 ->where('total_members', '>', 0)
                 ->decrement('total_members');
         });
+
+        AuditLog::record(
+            action: 'team.kick',
+            userId: $actor->id,
+            subject: $team,
+            changes: ['kicked_user_id' => $targetUserId],
+            ip: request()?->ip(),
+        );
     }
 }

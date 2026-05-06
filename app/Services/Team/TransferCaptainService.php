@@ -3,6 +3,7 @@
 namespace App\Services\Team;
 
 use App\Exceptions\Team\CannotTransferToNonMemberException;
+use App\Models\AuditLog;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\User;
@@ -26,7 +27,9 @@ class TransferCaptainService
             throw new CannotTransferToNonMemberException;
         }
 
-        return DB::transaction(function () use ($team, $currentCaptain, $newCaptainUserId, $newCaptainMembership): Team {
+        $oldCaptainId = $team->captain_id;
+
+        $updated = DB::transaction(function () use ($team, $currentCaptain, $newCaptainUserId, $newCaptainMembership): Team {
             $team->update(['captain_id' => $newCaptainUserId]);
 
             $newCaptainMembership->update(['role' => 'captain']);
@@ -37,5 +40,18 @@ class TransferCaptainService
 
             return $team->fresh();
         });
+
+        AuditLog::record(
+            action: 'team.transfer_captain',
+            userId: $currentCaptain->id,
+            subject: $updated,
+            changes: [
+                'old_captain_id' => $oldCaptainId,
+                'new_captain_id' => $newCaptainUserId,
+            ],
+            ip: request()?->ip(),
+        );
+
+        return $updated;
     }
 }

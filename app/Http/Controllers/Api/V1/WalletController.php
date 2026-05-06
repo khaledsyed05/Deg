@@ -11,6 +11,7 @@ use App\Http\Requests\Api\V1\Wallet\WalletTopupRequest;
 use App\Http\Resources\Wallet\WalletAccountResource;
 use App\Http\Resources\Wallet\WalletTransactionResource;
 use App\Http\Traits\ApiResponse;
+use App\Models\AuditLog;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\User;
@@ -157,6 +158,14 @@ class WalletController extends Controller
 
         $wallet->settings = $merged;
         $wallet->save();
+
+        AuditLog::record(
+            action: 'wallet.settings_changed',
+            userId: $request->user()->id,
+            subject: $wallet,
+            changes: ['before' => $current, 'after' => $merged],
+            ip: $request->ip(),
+        );
 
         return $this->success($this->settingsPayload($wallet->fresh()));
     }
