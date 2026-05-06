@@ -224,6 +224,20 @@ ownership / notes.
   authenticated; idempotent for already-members)
 - `PUT /api/v1/teams/{id}/leave` — `Api\V1\TeamController@leave`
   (Phase 18 work; not part of Sprint 4 scope)
+- `GET /api/v1/profile/stats` — `Api\V1\PlayerController@stats`
+  (refactored in Sprint 5 to delegate to
+  `App\Services\Profile\PlayerStatsService` so /sports-profile/me
+  shares the same payload builder)
+- `GET /api/v1/profile/achievements` —
+  `Api\V1\PlayerController@achievements` (same refactor)
+- `GET /api/v1/sports-profile/me` —
+  `Api\V1\SportsProfileController@me` (new in Sprint 5; composite
+  of stats + achievements + last 5 past bookings)
+- `GET /api/v1/sports-profile/weekly-activity` —
+  `Api\V1\SportsProfileController@weeklyActivity` (new in Sprint 5;
+  12-week aggregation cached for 15 min via
+  `App\Services\SportsProfile\WeeklyActivityService`; cache
+  invalidated by `BookingObserver` on booking create/update/delete)
 
 ## Payment
 
@@ -292,9 +306,9 @@ ownership / notes.
   `GET /api/v1/teams/invite/{code}`~~ — **Resolved in Sprint 4.**
   All five (plus `PUT /teams/{id}` and `DELETE /teams/{id}`) are
   now live. See "Phase 9: Teams + Sports Profile" above.
-- `GET /api/v1/sports-profile/me`,
-  `GET /api/v1/sports-profile/weekly-activity` — later sprint
-  (Sports Profile).
+- ~~`GET /api/v1/sports-profile/me`,
+  `GET /api/v1/sports-profile/weekly-activity`~~ — **Resolved in
+  Sprint 5.** Both live. See "Phase 9: Teams + Sports Profile" above.
 - `GET /api/v1/coupons/my`, `/api/v1/coupons/{id}`,
   `/api/v1/coupons/validate`, `/api/v1/coupons/redeem` — Sprint 4
   (Coupons; tracked under Promotions in current code).

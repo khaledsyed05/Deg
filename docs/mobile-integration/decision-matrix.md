@@ -222,3 +222,29 @@ recommended action and who owns it?
   transactions; the `App\Support\Idempotency` primitive is wallet-
   typed and not reused. If a generic primitive is needed later,
   that's its own task.
+
+---
+
+## Sprint 5 status (2026-05-06)
+
+- **Two new sports-profile endpoints live:** `GET
+  /sports-profile/me` (composite of stats + achievements + last 5
+  past bookings) and `GET /sports-profile/weekly-activity` (12-week
+  aggregation, oldest-first, zero-filled). No new findings — this
+  sprint addresses spec gaps, not Sprint 1 envelope deviations.
+- **Service extraction:** `PlayerController@stats` and
+  `@achievements` previously had inline payload-building logic. Both
+  moved into `App\Services\Profile\{PlayerStatsService,
+  AchievementsService}` so the new endpoint composes the same
+  payload shape without coupling to `PlayerController`. Wire format
+  unchanged for the existing endpoints.
+- **Aggregation strategy:** PHP-side bucketing instead of
+  driver-aware SQL. At 12 weeks × low-double-digit rows per user,
+  the SQL group-by path is overkill. The Sprint 2 driver-split
+  pattern (`Venue::scopeNearby`) is the upgrade path if profiling
+  later flags it.
+- **Caching:** 15-minute TTL keyed by `user_id + Monday-of-week
+  date`. Roll-over at week boundaries is automatic.
+  `BookingObserver` (already existed) gained `created`/`updated`/
+  `deleted` hooks into `WeeklyActivityService::forget` so any
+  booking change for a user wipes their cache.

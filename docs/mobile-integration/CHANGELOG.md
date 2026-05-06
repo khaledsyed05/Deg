@@ -13,6 +13,61 @@ Format:
 
 ---
 
+## 2026-05-06 — Sprint 5 — Sports Profile aggregations
+
+**Decision:** Build `GET /sports-profile/me` (composite of stats +
+achievements + last 5 past bookings) and `GET
+/sports-profile/weekly-activity` (12-week activity bar-chart
+aggregation, oldest-first, zero-filled). Both delivered in one
+sprint with caching on the weekly endpoint.
+**Rationale:** Two endpoints, both aggregations over data that
+already exists. The composite `me` endpoint is straight assembly;
+the weekly endpoint trades 15-minute cache freshness for cheap
+reads. Cache invalidation hooks into the existing `BookingObserver`
+so booking changes wipe the user's cache immediately.
+**Files affected:** new — `app/Http/Controllers/Api/V1/SportsProfileController.php`,
+`app/Services/Profile/{PlayerStatsService,AchievementsService}.php`,
+`app/Services/SportsProfile/WeeklyActivityService.php`,
+`tests/Feature/SportsProfile/{Me,WeeklyActivity}Test.php`,
+`docs/mobile-integration/sprint-5-discovery.md`. Modified —
+`app/Http/Controllers/Api/V1/PlayerController.php` (delegate stats
+and achievements to the new services), `app/Observers/BookingObserver.php`
+(forget weekly-activity cache on created/updated/deleted),
+`routes/api.php`,
+`tests/Feature/MobileEnvelope/Phase09TeamsSportsProfileTest.php`.
+
+---
+
+## 2026-05-06 — Sprint 5 — PHP-side bucketing for weekly activity
+
+**Decision:** Bucket weekly activity in PHP (`Carbon::startOfWeek()`)
+rather than driver-aware SQL (`WEEK()` / `strftime('%W')`). The Sprint
+2 driver-split pattern (`Venue::scopeNearby`) remains the upgrade
+path if profiling later flags the simple PHP loop.
+**Rationale:** At 12 weeks × low-double-digit rows per active user,
+the SQL `GROUP BY` saving is negligible while the maintenance cost
+of a driver-aware switch is non-zero. PHP-side bucketing is correct,
+portable across MySQL/MariaDB/SQLite, and trivially easy to read.
+**Files affected:** `app/Services/SportsProfile/WeeklyActivityService.php`.
+
+---
+
+## 2026-05-06 — Sprint 5 — Activity status filter
+
+**Decision:** Statuses that count as "activity" for the weekly
+chart are: `confirmed`, `completed`, `checked_in`, `scheduled`.
+Statuses that DO NOT count: `cancelled`, `no_show`, `failed`,
+`pending_payment`.
+**Rationale:** A cancelled booking is not activity the user
+performed; a no-show isn't either. `pending_payment` and `failed`
+are pre-confirmation states. The four counted statuses cover both
+"upcoming" and "happened" — the chart shows commitment + actual
+participation.
+**Files affected:** `app/Services/SportsProfile/WeeklyActivityService.php`
+(ACTIVE_STATUSES constant), tests assert the filter.
+
+---
+
 ## 2026-05-06 — Sprint 4 — Canonical auth flow (Phase 0)
 
 **Decision:** Reject the `POST /auth/register` line item from the spec.
