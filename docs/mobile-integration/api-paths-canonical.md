@@ -47,6 +47,16 @@ ownership / notes.
   `Api\V1\VenueController@recentlyViewed` (auth)
 - `GET /api/v1/venues/clusters` —
   `Api\V1\Geography\GeographyController@venueClusters`
+  (city-grouped clustering anchored at city centres; `zoom` param is
+  accepted but currently ignored — true zoom-aware clustering is
+  deferred until venue density justifies it. Sprint 6 left this
+  endpoint untouched aside from documentation; data-shape locked by
+  `tests/Feature/Venue/ClustersTest.php`.)
+- `GET /api/v1/venues/by-bounds` —
+  `Api\V1\VenueController@byBounds` (auth) (new in Sprint 6;
+  authenticated bounding-box query returning lightweight
+  `VenueMapResource` for map viewports; default 200 / max 500;
+  composite `(latitude, longitude)` index added in Sprint 6 B1)
 - `GET /api/v1/venues/{venue}` — `Api\V1\VenueController@show`
 - `GET /api/v1/venues/{venue}/availability` —
   `Api\V1\VenueController@availability`
@@ -293,7 +303,10 @@ ownership / notes.
   No separate `/auth/register` endpoint exists by design. New-user
   profile completion uses `PUT /profile` after OTP verification;
   mobile branches on `data.is_new_user` from `/auth/otp/verify`.
-- `GET /api/v1/venues/by-bounds` — Sprint 6 (Maps).
+- ~~`GET /api/v1/venues/by-bounds`~~ — **Resolved in Sprint 6.** Live
+  with `auth:sanctum`, lightweight `VenueMapResource`, and a
+  composite `(latitude, longitude)` index. See "Phase 2: Home +
+  Discovery" above for the canonical entry.
 - `GET /api/v1/conversations`, `/api/v1/conversations/{id}`,
   `/api/v1/conversations/{id}/messages`,
   `POST /api/v1/messages`, `POST /api/v1/messages/{id}/mark-read`,

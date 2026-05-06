@@ -248,3 +248,28 @@ recommended action and who owns it?
   `BookingObserver` (already existed) gained `created`/`updated`/
   `deleted` hooks into `WeeklyActivityService::forget` so any
   booking change for a user wipes their cache.
+
+---
+
+## Sprint 6 status (2026-05-06)
+
+- **`GET /venues/by-bounds` shipped.** Composite index on
+  `(latitude, longitude)`, portable `Venue::scopeWithinBounds` (no
+  driver branch needed — `BETWEEN` is identical across MySQL/MariaDB/
+  SQLite for our decimal columns), lightweight `VenueMapResource`,
+  default 200 / max 500 cap. Auth-required per spec. Performance
+  asserted at <250ms for 200 venues.
+- **`/venues/clusters` deviation from prompt — kept untouched.** The
+  Sprint 6 prompt assumed this was a Sprint 2 stub; discovery showed
+  it's a real city-grouped clustering endpoint with 5-min cache.
+  Rewriting it to the by-bounds shape would have regressed working
+  behaviour, so we left the controller and service alone and added
+  4 data-shape tests to lock the wire format. Documented as a
+  deliberate deviation in CHANGELOG.
+- **Server-side clustering deferred.** Reason: Syria market is
+  Damascus-only with ≤200 active venues. PostGIS or grid-based
+  clustering would be YAGNI. Trigger to revisit: total active venues
+  > 500 across multiple cities, OR mobile reports performance
+  issues with client-side clustering at high zoom levels.
+- **No new dependencies introduced.** `whereBetween` covers the
+  whole spec; no PostGIS, no spatial PHP libraries.

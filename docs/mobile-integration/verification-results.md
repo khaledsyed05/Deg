@@ -1,6 +1,6 @@
 # Mobile Integration — Verification Results
 
-**Date:** 2026-05-06 (updated after Sprint 5)
+**Date:** 2026-05-06 (updated after Sprint 6)
 **Test class root:** `tests/Feature/MobileEnvelope/`
 **Run command:** `php artisan test tests/Feature/MobileEnvelope/`
 **Spec source:** `BACKEND_REQUIREMENTS.md`
@@ -9,18 +9,20 @@
 
 | Outcome | Count | % |
 |---|---|---|
-| ✅ Match (test passes, envelope correct, status as expected) | 82 | 100% |
+| ✅ Match (test passes, envelope correct, status as expected) | 83 | 100% |
 | ⚠️ Minor mismatch (envelope OK, data field divergence) | 0 | 0% |
 | 🔴 Major mismatch (envelope wrong, or 4xx/5xx where 200 expected) | 0 | 0% |
 | ⏸️ Skipped | 0 | 0% |
-| **Total** | **82** | **100%** |
+| **Total** | **83** | **100%** |
 
 (Sprint 1 baseline: 36 ✅ / 37 🔴. Sprint 2 took the 37 reds to zero.
 Sprint 3 added `POST /wallet/pay-booking` (+1) and upgraded the four
 existing wallet endpoints from "envelope-only" to "data-shape
 verified". Sprint 4 added the six new Teams endpoints. Sprint 5
-added the two Sports Profile aggregations (`GET /sports-profile/me`
-and `GET /sports-profile/weekly-activity`) — total covered now 82.)
+added the two Sports Profile aggregations. Sprint 6 promoted
+`GET /venues/by-bounds` from gap to data-shape verified (+1) and
+upgraded `GET /venues/clusters` from envelope-only to data-shape
+verified — total covered now 83.)
 
 ## What changed in Sprint 2
 
@@ -107,12 +109,12 @@ indicate full match unless a row carries a Sprint-2 status note.
 
 ### Sprint: Maps + Filters + Settings (4 endpoints)
 
-| Method + Path | Outcome | Sprint 2 status |
+| Method + Path | Outcome | Sprint status |
 |---|---|---|
-| `GET /cities` | ✅ | **fixed** (canonical route added) |
-| `GET /cities/{id}/neighborhoods` | ✅ | **fixed** (new method on GeographyController) |
-| `GET /venues/clusters` | ✅ | **fixed** (route moved before /venues/{venue} wildcard) |
-| `GET /venues/by-bounds` | ✅* | route still absent — Sprint 6 (Maps); test asserts canonical 404 envelope |
+| `GET /cities` | ✅ | Sprint 2: canonical route added |
+| `GET /cities/{id}/neighborhoods` | ✅ | Sprint 2: new method on GeographyController |
+| `GET /venues/clusters` | ✅ data-shape | **Sprint 6 polished.** Discovery showed it was already a working city-grouped clustering endpoint, not the Sprint 2 stub the prompt assumed; controller untouched, 4 data-shape tests added to lock the wire format. |
+| `GET /venues/by-bounds` | ✅ data-shape | **Sprint 6 NEW.** Composite (lat,lng) index + scopeWithinBounds + lightweight VenueMapResource; 12 endpoint tests + 5 scope unit tests + 1 perf test (200 venues <250ms). |
 
 ### Phase Matches / Waitlist / Deals (14 endpoints)
 
@@ -180,7 +182,9 @@ indicate full match unless a row carries a Sprint-2 status note.
   separate registration endpoint by design. New users complete profile
   via `PUT /profile` after OTP verification. `data.is_new_user` flag
   added to `/auth/otp/verify` and `/auth/google` for mobile branching.
-- **`GET /venues/by-bounds`** — handed to Sprint 6 (Maps).
+- ~~**`GET /venues/by-bounds`**~~ — **resolved Sprint 6.** Live with
+  composite (lat, lng) index, lightweight `VenueMapResource`, sub-
+  250ms perf budget verified.
 - The Phase 10 chat endpoints currently 404; full chat
   implementation lands in Sprint 7. Until then mobile receives a
   spec-shaped 404, which is enough for graceful degradation.

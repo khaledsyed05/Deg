@@ -13,6 +13,97 @@ Format:
 
 ---
 
+## 2026-05-06 — Sprint 6 — `GET /venues/by-bounds` shipped
+
+**Decision:** Build the bounding-box query as the headline of
+Sprint 6. Composite index on `(latitude, longitude)`, portable
+`Venue::scopeWithinBounds` using `whereBetween` (no driver branch
+needed — `BETWEEN` is identical across MySQL/MariaDB/SQLite for
+decimal columns, unlike the trig-dependent `scopeNearby`),
+lightweight `VenueMapResource` excluding media/reviews/pricing
+tiers. Auth-required. Default 200 / max 500 cap.
+**Rationale:** Mobile map view needs to fetch many venues fast; the
+full `VenueResource` would push too much over the wire for a 200-
+marker viewport. The performance budget (<250ms for 200 venues)
+verifies the index is doing its job.
+**Files affected:** new —
+`app/Http/Requests/Api/V1/Venue/ByBoundsRequest.php`,
+`app/Http/Resources/Venue/VenueMapResource.php`,
+`database/migrations/2026_05_06_110917_add_lat_lng_composite_index_to_venues_table.php`,
+`tests/Feature/Venue/{ByBounds,ByBoundsPerformance,Clusters}Test.php`,
+`tests/Unit/VenueWithinBoundsScopeTest.php`,
+`docs/mobile-integration/sprint-6-discovery.md`. Modified —
+`app/Models/Venue.php` (added `scopeWithinBounds`),
+`app/Http/Controllers/Api/V1/VenueController.php` (added `byBounds`
+method),
+`app/Http/Controllers/Api/V1/Geography/GeographyController.php`
+(phpdoc on `venueClusters` only — no behavioural change),
+`routes/api.php`,
+`tests/Feature/MobileEnvelope/PhaseSprintMapsSettingsTest.php`.
+
+---
+
+## 2026-05-06 — Sprint 6 — `/venues/clusters` left untouched (deviation from prompt)
+
+**Decision:** Do NOT rewrite `/venues/clusters` to accept
+north/south/east/west and return the by-bounds shape (which the
+Sprint 6 prompt asked us to do). The endpoint is untouched aside
+from a phpdoc explaining its semantics, and 4 data-shape tests are
+added to lock the wire format.
+**Rationale:** The Sprint 6 prompt assumed `/venues/clusters` was a
+Sprint-2 stub. Discovery showed it's a real, working, city-grouped
+clustering endpoint with 5-min cache that already returns
+`{clusters[*]: {lat, lng, count, city, distance_km}, total_venues}`.
+Rewriting it to the by-bounds shape would have *regressed* working
+behaviour — and any clients calling it today (web admin, dashboard)
+would break. Per the Cardinal Rule's Decision Rule 1 ("spec wins")
+and the prompt's own anti-pattern guidance ("don't change semantic
+behavior beyond polish"), we leave it alone.
+**Trigger to revisit:** when total active venues > 500 across
+multiple cities, or when mobile reports issues with client-side
+clustering at high zoom levels. Approach when revisited:
+grid-based or geohash-prefix clustering at sub-city granularity
+(NOT PostGIS — overkill for the catalogue size).
+**Files affected:** `app/Http/Controllers/Api/V1/Geography/GeographyController.php`
+(phpdoc only), `tests/Feature/Venue/ClustersTest.php` (new tests
+locking the wire format).
+
+---
+
+## 2026-05-06 — Sprint 6 — No driver branch in `scopeWithinBounds`
+
+**Decision:** `Venue::scopeWithinBounds` uses `whereBetween` on lat
+and lng with no driver branch, unlike `Venue::scopeNearby` which
+splits between MySQL Haversine (`acos`/`cos`/`sin`) and a portable
+SQLite bounding-box.
+**Rationale:** `BETWEEN` semantics for our `decimal(10,8)` /
+`decimal(11,8)` lat/lng columns are identical across MySQL,
+MariaDB, and SQLite. The driver split exists in `scopeNearby` only
+because trig functions diverge; for inclusive `BETWEEN` there's
+nothing to split. Adding a branch would be ceremony without
+benefit.
+**Files affected:** `app/Models/Venue.php`.
+
+---
+
+## 2026-05-06 — Sprint 6 — Antimeridian wrap-around NOT implemented
+
+**Decision:** `Venue::scopeWithinBounds` rejects boxes where
+`west > east` (cross-meridian boxes). The `ByBoundsRequest`
+validator's `withValidator` callback explicitly errors with "east
+must be greater than west".
+**Rationale:** YAGNI for Syria. All venues are within ±5° of
+longitude 38°. Implementing wrap-around would mean splitting the
+query into a UNION of two ranges (`>= west OR <= east`), which is
+non-trivial and adds a code path with no test coverage in this
+codebase. If a global deployment ever needs it, the implementation
+is straightforward — but it's a separate task with separate tests.
+**Files affected:** `app/Models/Venue.php` (phpdoc),
+`app/Http/Requests/Api/V1/Venue/ByBoundsRequest.php` (validation
+error).
+
+---
+
 ## 2026-05-06 — Sprint 5 — Sports Profile aggregations
 
 **Decision:** Build `GET /sports-profile/me` (composite of stats +
