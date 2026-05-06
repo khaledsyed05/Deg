@@ -71,6 +71,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
+use Pusher\Pusher;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -100,6 +101,18 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(FirebaseAuthService::class, fn () => new FirebaseAuthService(
             projectId: (string) config('services.firebase.project_id', ''),
         ));
+
+        $this->app->singleton(Pusher::class, function () {
+            return new Pusher(
+                (string) (env('PUSHER_APP_KEY') ?: 'placeholder-key'),
+                (string) (env('PUSHER_APP_SECRET') ?: 'placeholder-secret'),
+                (string) (env('PUSHER_APP_ID') ?: 'placeholder-app-id'),
+                [
+                    'cluster' => (string) (env('PUSHER_APP_CLUSTER') ?: 'mt1'),
+                    'useTLS' => true,
+                ],
+            );
+        });
 
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
         $this->app->bind(ClubRepositoryInterface::class, ClubRepository::class);
