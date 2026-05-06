@@ -117,12 +117,17 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             if ($e instanceof ThrottleRequestsException) {
+                $headers = $e->getHeaders();
+                $retryAfter = isset($headers['Retry-After']) ? (int) $headers['Retry-After'] : null;
+
                 return response()->json([
                     'success' => false,
-                    'message' => $e->getMessage() ?: 'Too many requests',
+                    'message' => __('api.too_many_requests') !== 'api.too_many_requests'
+                        ? __('api.too_many_requests')
+                        : ($e->getMessage() ?: 'Too many requests'),
                     'data' => null,
-                    'errors' => null,
-                ], 429);
+                    'errors' => $retryAfter !== null ? ['retry_after' => $retryAfter] : null,
+                ], 429, $headers);
             }
 
             if ($e instanceof HttpExceptionInterface) {
