@@ -66,7 +66,8 @@ class GeographyEndpointsTest extends TestCase
     public function test_popular_cities(): void
     {
         $this->seedSyriaSample();
-        $this->getJson('/api/v1/geography/cities/popular?limit=5')
+        // Sprint 8: deprecated /geography/cities/popular alias removed; use canonical /cities.
+        $this->getJson('/api/v1/cities?limit=5')
             ->assertStatus(200)
             ->assertJsonCount(1, 'data');
     }
@@ -74,7 +75,8 @@ class GeographyEndpointsTest extends TestCase
     public function test_city_show(): void
     {
         [,, $city] = $this->seedSyriaSample();
-        $this->getJson("/api/v1/geography/cities/{$city->id}")
+        // Sprint 8: deprecated /geography/cities/{id} alias removed; use canonical /cities/{id}.
+        $this->getJson("/api/v1/cities/{$city->id}")
             ->assertStatus(200)
             ->assertJsonPath('data.id', $city->id);
     }
@@ -83,7 +85,7 @@ class GeographyEndpointsTest extends TestCase
     {
         [,, $city] = $this->seedSyriaSample();
         $city->update(['is_visible' => false]);
-        $this->getJson("/api/v1/geography/cities/{$city->id}")
+        $this->getJson("/api/v1/cities/{$city->id}")
             ->assertStatus(404);
     }
 
@@ -107,7 +109,8 @@ class GeographyEndpointsTest extends TestCase
     public function test_venue_clusters(): void
     {
         $this->seedSyriaSample();
-        $this->getJson('/api/v1/geography/venues/clusters?lat=33.5138&lng=36.2765&radius=50')
+        // Sprint 8: deprecated /geography/venues/clusters alias removed; use canonical /venues/clusters.
+        $this->getJson('/api/v1/venues/clusters?lat=33.5138&lng=36.2765&radius=50')
             ->assertStatus(200)
             ->assertJsonStructure(['data' => ['clusters', 'total_venues']])
             ->assertJsonPath('data.total_venues', 5);
