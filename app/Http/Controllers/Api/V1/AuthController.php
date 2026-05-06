@@ -36,6 +36,7 @@ class AuthController extends Controller
         $uuid = $this->otpService->send(
             phoneNumber: $request->phone,
             ipAddress: $request->ip(),
+            channel: $request->input('channel'),
         );
 
         return response()->json([
@@ -138,7 +139,9 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
+            'message' => null,
             'data' => [
+                'is_new_user' => $isNewUser,
                 'user_exists' => ! $isNewUser,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
@@ -226,6 +229,7 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
+                'is_new_user' => $isNewUser,
                 'user_exists' => ! $isNewUser,
                 'access_token' => $token,
                 'token_type' => 'Bearer',

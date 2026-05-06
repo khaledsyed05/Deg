@@ -169,17 +169,32 @@ Accept-Language: ar | en
 **Confidence:** `live`
 **Auth:** Public (no token needed)
 
-**Notes:** Mobile sends `+963991234567` format. Backend validates, generates 5-digit code, sends via Syriatel/MTN SMS gateway. Rate limit: 1 per 60s, max 5/hour per phone.
+**Notes:** Mobile sends `+963991234567` format. Mobile picks delivery channel
+via `channel` ∈ `{whatsapp, sms}`; backend honors that choice (falls back to
+auto-detection if omitted). Rate limit: 1 per 60s, max 5/hour per phone.
 
 **Request body:**
 
 ```json
 {
-  "phone_number": "{{test_phone}}"
+  "phone": "{{test_phone}}",
+  "channel": "whatsapp"
 }
 ```
 
-**Response:**
+**Response (success):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "challenge_uuid": "9b1c2d3e-4f5a-6789-0123-456789abcdef",
+    "expires_in_seconds": 120
+  }
+}
+```
+
+**Response (validation error):**
 
 ```json
 {
@@ -197,24 +212,63 @@ Accept-Language: ar | en
 
 ### `POST /auth/otp/verify`
 
-**Description:** Verify OTP code. Returns `access_token` + `user` if existing user, OR returns flag to call `/auth/register` next.
+**Description:** Verify OTP code. Auto-creates a User row when the phone is
+new. Returns the auth envelope plus an `is_new_user` flag mobile uses to
+decide whether to prompt for name before navigating to home.
 **Priority:** P0 - critical
 **Postman folder:** `01. Authentication & Onboarding`
 **Confidence:** `live`
 **Auth:** Public (no token needed)
 
-**Notes:** Two response variants: (1) existing user → full auth response; (2) new user → `{ challenge_uuid, requires_registration: true }`. Mobile then routes to "Complete Profile" page.
+**Notes:** Single response shape for both new and existing users:
+`is_new_user=true` ⇒ mobile prompts for name (one field), calls `PUT /profile`
+with `{name}`, then navigates to home. `is_new_user=false` ⇒ navigate to home.
 
 **Request body:**
 
 ```json
 {
-  "phone_number": "{{test_phone}}",
-  "otp_code": "{{test_otp}}"
+  "phone": "{{test_phone}}",
+  "otp": "{{test_otp}}",
+  "challenge_uuid": "9b1c2d3e-4f5a-6789-0123-456789abcdef"
 }
 ```
 
-**Response:**
+**Response (success — new user):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "is_new_user": true,
+    "user_exists": false,
+    "access_token": "1|qHQYz8oBcRvW6Lhg0KM3sW1b5pVnE2JiX9DfUaTk0c8a42",
+    "token_type": "Bearer",
+    "expires_in": 31536000,
+    "user": null,
+    "onboarding_prefill": { "name": null, "email": null, "avatar_url": null }
+  }
+}
+```
+
+**Response (success — existing user):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "is_new_user": false,
+    "user_exists": true,
+    "access_token": "1|qHQYz8oBcRvW6Lhg0KM3sW1b5pVnE2JiX9DfUaTk0c8a42",
+    "token_type": "Bearer",
+    "expires_in": 31536000,
+    "user": { "id": 1, "name": "محمد علي", "phone_number": "+963991234567" },
+    "onboarding_prefill": null
+  }
+}
+```
+
+**Response (validation error):**
 
 ```json
 {
@@ -267,70 +321,41 @@ Accept-Language: ar | en
 
 ---
 
-### `POST /auth/register`
+### Profile completion for new users (NOT a separate endpoint)
 
-**Description:** Complete profile after OTP verification (for new users only).
-**Priority:** P0 - critical
-**Postman folder:** `01. Authentication & Onboarding`
-**Confidence:** `high`
-**Auth:** Public (no token needed)
+**The spec previously named this `POST /auth/register`. That was incorrect
+terminology — there is no separate registration endpoint by design.**
 
-**Notes:** Sends: `{ challenge_uuid, name, date_of_birth, email?, language? }`. Returns full auth response with `access_token` + `user`.
+**Canonical flow (phone-only, identical for new and existing users):**
 
-**Request body:**
+1. `POST /auth/otp/send` with `{phone, channel}` where `channel ∈
+   {whatsapp, sms}`. Mobile chooses the channel; backend delivers the
+   OTP via that channel.
+2. User enters the OTP code received on their phone.
+3. `POST /auth/otp/verify` with `{phone, otp, challenge_uuid}`. Response includes:
+   ```json
+   {
+     "success": true,
+     "data": {
+       "access_token": "1|abc...",
+       "token_type": "Bearer",
+       "expires_in": 31536000,
+       "is_new_user": true,
+       "user_exists": false,
+       "user": { "id": 123, "phone_number": "+963...", "name": null },
+       "onboarding_prefill": { "name": null, "email": null, "avatar_url": null }
+     }
+   }
+   ```
+4. Mobile branches on `is_new_user`:
+   - `true` → prompt user for **name only** (single input), call `PUT /profile`
+     with `{name}`, then navigate to home.
+   - `false` → navigate straight to home.
 
-```json
-{
-  "phone_number": "{{test_phone}}",
-  "name": "محمد أحمد",
-  "email": "mohamed@example.com"
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "تم إنشاء الحساب بنجاح",
-  "data": {
-    "user": {
-      "id": 1,
-      "name": "محمد علي",
-      "first_name": "محمد",
-      "last_name": "علي",
-      "phone_number": "+963991234567",
-      "email": "user1@example.com",
-      "avatar_url": null,
-      "city": {
-        "id": 1,
-        "country_id": 1,
-        "state_id": 1,
-        "name": "Damascus",
-        "name_ar": "دمشق",
-        "latitude": 33.5138,
-        "longitude": 36.2765
-      },
-      "language": "ar",
-      "is_phone_verified": true,
-      "is_email_verified": false,
-      "verified_at": "2026-03-27T10:00:00Z",
-      "role": "player",
-      "account_status": "active",
-      "preferences": {
-        "notifications_push_enabled": true,
-        "preferred_language": "ar"
-      },
-      "created_at": "2025-12-27T10:00:00Z",
-      "updated_at": "2026-04-26T06:00:00Z"
-    },
-    "access_token": "1|qHQYz8oBcRvW6Lhg0KM3sW1b5pVnE2JiX9DfUaTk0c8a42",
-    "token_type": "Bearer",
-    "expires_in": 31536000,
-    "refresh_token": null
-  }
-}
-```
+**There is no `password` field anywhere in the auth flow.** No password
+reset, no Google sign-in fallback to register, no email confirmation —
+phone + OTP is the only path in. (Google Sign-In via `POST /auth/google` is
+a parallel auth method that returns the same envelope shape.)
 
 ---
 
@@ -5121,11 +5146,13 @@ The following inference decisions were made when the existing code didn't pin a 
 
 Quick reference: which Flutter phase uses which backend endpoints.
 
-## Phase 1: Auth (12 endpoints)
+## Phase 1: Auth (11 endpoints)
 - `/auth/otp/send`, `/auth/otp/verify`, `/auth/otp/resend`
-- `/auth/register`, `/auth/google`, `/auth/logout`
+- `/auth/google`, `/auth/logout`
 - `/profile`, `/profile/avatar`, `/devices`
 - `/auth/refresh` (optional)
+- (No separate `/auth/register` endpoint — new-user profile completion uses
+  `PUT /profile` after OTP verification. See the canonical flow note above.)
 
 ## Phase 2: Home + Discovery (10 endpoints)
 - `/content/banners`, `/content/featured`

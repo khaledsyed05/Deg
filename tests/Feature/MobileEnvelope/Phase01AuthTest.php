@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\MobileEnvelope;
 
+use App\Models\User;
+use App\Services\Auth\OtpService;
+use Mockery\MockInterface;
 use Tests\MobileIntegrationTest;
 
 /**
@@ -38,16 +41,58 @@ class Phase01AuthTest extends MobileIntegrationTest
         $this->assertErrorEnvelope($response, 422);
     }
 
-    public function test_post_auth_register_returns_documented_response(): void
+    public function test_post_auth_otp_verify_returns_is_new_user_flag_for_new_user(): void
     {
-        // Sprint-3 gap: BACKEND_REQUIREMENTS.md mandates POST /auth/register
-        // but the codebase deliberately omits it (OTP-only onboarding flow).
-        // Until Sprint 3 reconciles the spec, this test asserts the canonical
-        // 404 envelope — verifying our exception handler still wraps even
-        // unrouted endpoints.
-        $response = $this->postJson('/api/v1/auth/register', []);
+        $this->mock(OtpService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('verify')->once()->andReturn(true);
+        });
 
-        $this->assertErrorEnvelope($response, 404);
+        $response = $this->postJson('/api/v1/auth/otp/verify', [
+            'phone' => '+963991234501',
+            'otp' => '12345',
+            'challenge_uuid' => '11111111-2222-3333-4444-555555555555',
+        ]);
+
+        $response->assertOk();
+        $this->assertEnvelope($response);
+
+        $response->assertJsonPath('data.is_new_user', true)
+            ->assertJsonPath('data.user_exists', false)
+            ->assertJsonStructure([
+                'data' => [
+                    'is_new_user',
+                    'access_token',
+                    'token_type',
+                    'expires_in',
+                    'user',
+                    'onboarding_prefill' => ['name', 'email', 'avatar_url'],
+                ],
+            ]);
+    }
+
+    public function test_post_auth_otp_verify_returns_is_new_user_false_for_existing_user(): void
+    {
+        $existing = User::factory()->create([
+            'phone_number' => '+963991234502',
+            'phone_verified_at' => now(),
+        ]);
+
+        $this->mock(OtpService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('verify')->once()->andReturn(true);
+        });
+
+        $response = $this->postJson('/api/v1/auth/otp/verify', [
+            'phone' => '+963991234502',
+            'otp' => '12345',
+            'challenge_uuid' => '11111111-2222-3333-4444-666666666666',
+        ]);
+
+        $response->assertOk();
+        $this->assertEnvelope($response);
+
+        $response->assertJsonPath('data.is_new_user', false)
+            ->assertJsonPath('data.user_exists', true)
+            ->assertJsonPath('data.user.id', $existing->id);
     }
 
     public function test_post_auth_google_returns_validation_envelope(): void

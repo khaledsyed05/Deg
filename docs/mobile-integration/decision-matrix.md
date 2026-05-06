@@ -162,12 +162,16 @@ recommended action and who owns it?
   Canonical `/cities`, `/cities/{id}`, `/cities/{id}/neighborhoods`,
   `/venues/clusters` registered; `/api/v1/geography/...` aliases
   retained for one sprint.
-- **Finding 6 — `/auth/register` route missing.** **Deferred again
-  to Sprint 4 / Auth-only sprint.** Sprint 3 reaffirms the
-  OTP-only flow per discovery findings; the spec mandates a
-  /register endpoint that the codebase intentionally omits. Not
-  reconciled this sprint — test asserts the canonical 404
-  envelope as a placeholder.
+- **Finding 6 — `/auth/register` route missing.** **Resolved in
+  Sprint 4 Phase 0.** Spec corrected: there is no separate
+  registration endpoint by design. New-user profile completion
+  uses `PUT /profile` after OTP verification. Backend now exposes
+  an `is_new_user` boolean at `data.is_new_user` on
+  `POST /auth/otp/verify` and `POST /auth/google` so mobile can
+  branch correctly. The orphan `test_post_auth_register_*` test
+  was removed; two new tests assert the `is_new_user` flag for
+  new vs. existing users. Spec now also documents the `channel`
+  parameter on `POST /auth/otp/send`.
 - **Finding 7 — Chat endpoints don't exist.** **Deferred to Sprint
   7.** Until then the canonical 404 envelope applies (verified by
   the Phase 10 probe tests).

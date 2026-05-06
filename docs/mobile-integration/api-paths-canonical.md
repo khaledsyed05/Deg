@@ -251,9 +251,10 @@ ownership / notes.
 
 ## Missing routes (gaps for future sprints)
 
-- `POST /api/v1/auth/register` — Sprint 3 (auth-flow reconciliation;
-  spec mandates it but the codebase intentionally onboards via
-  OTP-only).
+- ~~`POST /api/v1/auth/register`~~ — **Resolved in Sprint 4 Phase 0.**
+  No separate `/auth/register` endpoint exists by design. New-user
+  profile completion uses `PUT /profile` after OTP verification;
+  mobile branches on `data.is_new_user` from `/auth/otp/verify`.
 - `GET /api/v1/venues/by-bounds` — Sprint 6 (Maps).
 - `GET /api/v1/conversations`, `/api/v1/conversations/{id}`,
   `/api/v1/conversations/{id}/messages`,
