@@ -335,7 +335,16 @@ Route::prefix('v1')->group(function () {
         // Teams (Phase 9)
         Route::get('teams', [TeamController::class, 'index']);
         Route::post('teams', [TeamController::class, 'store']);
+        Route::get('teams/invite/{code}', [TeamController::class, 'useInvite'])
+            ->where('code', '[A-Za-z0-9]+');
         Route::get('teams/{id}', [TeamController::class, 'show'])->whereNumber('id');
+        Route::put('teams/{id}', [TeamController::class, 'update'])->whereNumber('id');
+        Route::delete('teams/{id}', [TeamController::class, 'destroy'])->whereNumber('id');
+        Route::post('teams/{id}/kick', [TeamController::class, 'kick'])->whereNumber('id');
+        Route::post('teams/{id}/transfer-captain', [TeamController::class, 'transferCaptain'])
+            ->whereNumber('id');
+        Route::post('teams/{id}/invite', [TeamController::class, 'generateInvite'])
+            ->whereNumber('id');
 
         // Phase 18 — Profile / Auth / Devices
         Route::put('profile/phone-number/initiate', [ProfileController::class, 'initiatePhoneChange']);
