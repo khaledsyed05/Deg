@@ -5,6 +5,7 @@ use App\Http\Middleware\CheckMaintenanceMode;
 use App\Http\Middleware\EnsureClubAccess;
 use App\Http\Middleware\EnsureJsonErrorShape;
 use App\Http\Middleware\EnsureQueueIsRunning;
+use App\Http\Middleware\VerifyWebhookSignature;
 use App\Http\SetLocale;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -47,6 +48,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'club.access' => EnsureClubAccess::class,
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
+            'verify.webhook' => VerifyWebhookSignature::class,
         ]);
 
         $middleware->api(append: [

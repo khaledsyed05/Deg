@@ -695,8 +695,12 @@ Route::prefix('club/v1')->middleware(['auth:sanctum'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::prefix('webhooks')->group(function () {
-    Route::post('mtn/callback', [MtnWebhookController::class, 'callback'])->name('webhooks.mtn.callback');
-    Route::post('syriatel/callback', [SyriatelWebhookController::class, 'callback'])->name('webhooks.syriatel.callback');
+    Route::post('mtn/callback', [MtnWebhookController::class, 'callback'])
+        ->middleware('verify.webhook:mtn')
+        ->name('webhooks.mtn.callback');
+    Route::post('syriatel/callback', [SyriatelWebhookController::class, 'callback'])
+        ->middleware('verify.webhook:syriatel')
+        ->name('webhooks.syriatel.callback');
     Route::post('fatora/callback', [FatoraWebhookController::class, 'callback'])->name('webhooks.fatora.callback');
     Route::post('bank/callback', [FatoraWebhookController::class, 'callback'])->name('webhooks.bank.callback');
     // Phase 11 — unified bank callback for both booking + wallet top-up
