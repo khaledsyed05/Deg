@@ -18,6 +18,9 @@ use App\Http\Controllers\Api\V1\App\AppMetadataController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\Chat\ConversationController as ChatConversationController;
+use App\Http\Controllers\Api\V1\Chat\MessageController as ChatMessageController;
+use App\Http\Controllers\Api\V1\Chat\PusherAuthController as ChatPusherAuthController;
 use App\Http\Controllers\Api\V1\Club\ClubController as PublicClubController;
 use App\Http\Controllers\Api\V1\Club\ManageBookingController;
 use App\Http\Controllers\Api\V1\Club\MyEventController;
@@ -354,6 +357,22 @@ Route::prefix('v1')->group(function () {
             Route::get('me', [SportsProfileController::class, 'me']);
             Route::get('weekly-activity', [SportsProfileController::class, 'weeklyActivity']);
         });
+
+        // Chat (Phase 10 — Sprint 7)
+        Route::get('chat/unread-summary', [ChatConversationController::class, 'unreadSummary']);
+        Route::get('conversations', [ChatConversationController::class, 'index']);
+        Route::get('conversations/{id}', [ChatConversationController::class, 'show'])
+            ->whereNumber('id');
+        Route::get('conversations/{id}/messages', [ChatConversationController::class, 'messages'])
+            ->whereNumber('id');
+        Route::post('conversations/{id}/mute', [ChatConversationController::class, 'mute'])
+            ->whereNumber('id');
+        Route::post('conversations/{id}/leave', [ChatConversationController::class, 'leave'])
+            ->whereNumber('id');
+        Route::post('messages', [ChatMessageController::class, 'store']);
+        Route::post('messages/{id}/mark-read', [ChatMessageController::class, 'markRead'])
+            ->whereNumber('id');
+        Route::post('pusher/auth', [ChatPusherAuthController::class, 'auth']);
 
         // Phase 18 — Profile / Auth / Devices
         Route::put('profile/phone-number/initiate', [ProfileController::class, 'initiatePhoneChange']);

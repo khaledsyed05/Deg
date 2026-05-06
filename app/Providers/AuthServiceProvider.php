@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Booking;
 use App\Models\Club;
+use App\Models\Conversation;
 use App\Models\Review;
 use App\Models\Settlement;
 use App\Models\Team;
@@ -11,6 +12,7 @@ use App\Models\Venue;
 use App\Models\VenueWaitlist;
 use App\Policies\BookingPolicy;
 use App\Policies\ClubPolicy;
+use App\Policies\ConversationPolicy;
 use App\Policies\ReviewPolicy;
 use App\Policies\SettlementPolicy;
 use App\Policies\TeamPolicy;
@@ -23,6 +25,7 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         Booking::class => BookingPolicy::class,
         Club::class => ClubPolicy::class,
+        Conversation::class => ConversationPolicy::class,
         Venue::class => VenuePolicy::class,
         Review::class => ReviewPolicy::class,
         Settlement::class => SettlementPolicy::class,
