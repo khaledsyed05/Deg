@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Tajawal', system-ui, sans-serif;
+}
+
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="rtl"] input,
+[dir="rtl"] textarea {
+  text-align: right;
+}
+
+.gradient-mesh {
+  background:
+    radial-gradient(circle at 20% 50%, rgba(34, 210, 106, 0.15), transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(34, 210, 106, 0.1), transparent 50%),
+    #050E1C;
+}
+
+.text-gradient-green {
+  background: linear-gradient(135deg, #22D26A 0%, #3FE085 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
