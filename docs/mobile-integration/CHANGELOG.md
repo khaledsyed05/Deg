@@ -13,6 +13,16 @@ Format:
 
 ---
 
+## 2026-05-07 — Post-Integration — Public Marketing Site Launch
+
+**Decision:** Launched public-facing marketing site at `/` (replacing Laravel welcome page) with landing page + 6 supporting pages (about, privacy, terms, contact, for-venues, 404).
+
+**Rationale:** يلا حجيز needs a professional marketing presence for app store listing, investor outreach, and organic search. Landing page is the primary conversion funnel; B2B (for-venues) page enables venue partnerships at scale. Stack: Blade + Tailwind v4 + Alpine.js (RTL-native, Arabic-only v1, no JS framework).
+
+**Files affected:** New — `resources/views/layouts/marketing.blade.php`, `resources/views/marketing/{home,about,contact,privacy,terms,for-venues}.blade.php`, `resources/views/marketing/partials/{nav,footer}.blade.php`, `resources/views/components/marketing/{button,section,feature-card,stat}.blade.php`, `resources/views/errors/404.blade.php`, `resources/css/marketing.css`, `tailwind.config.js`, `app/Http/Controllers/Marketing/{Home,About,Legal,Contact,ForVenues}Controller.php`, `lang/ar/marketing.php` (~900 strings), `docs/marketing-reference/README.md`, `resources/views/marketing/README.md`. Modified — `routes/web.php` (replaced welcome route with marketing routes). Deleted — `resources/views/welcome.blade.php`.
+
+---
+
 ## 2026-05-06 — Sprint 8 (FINAL) — Hardening: rate limits + audit logs + webhook sigs
 
 **Decision:** Sprint 8 closes the integration plan with cross-cutting

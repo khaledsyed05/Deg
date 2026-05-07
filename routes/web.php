@@ -27,13 +27,22 @@ use App\Http\Controllers\Club\SettingController as ClubSettingController;
 use App\Http\Controllers\Club\SettlementController as ClubSettlementController;
 use App\Http\Controllers\Club\VenueAvailabilityController as ClubVenueAvailabilityController;
 use App\Http\Controllers\Club\VenueController as ClubVenueController;
+use App\Http\Controllers\Marketing\HomeController;
+use App\Http\Controllers\Marketing\AboutController;
+use App\Http\Controllers\Marketing\LegalController;
+use App\Http\Controllers\Marketing\ContactController;
+use App\Http\Controllers\Marketing\ForVenuesController;
 use Dedoc\Scramble\Scramble;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/about', [AboutController::class, 'index'])->name('about');
+Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
+Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
+Route::get('/contact', [ContactController::class, 'show'])->name('contact');
+Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
+Route::get('/for-venues', [ForVenuesController::class, 'index'])->name('for-venues');
 
 Route::post('/locale', function (Request $request) {
     $locale = $request->input('locale', 'ar');
