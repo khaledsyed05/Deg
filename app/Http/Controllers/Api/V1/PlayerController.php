@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Traits\ApiResponse;
 use App\Models\PlayerStats;
 use App\Models\User;
+use App\Services\Profile\AchievementsService;
+use App\Services\Profile\PlayerStatsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -13,45 +15,14 @@ class PlayerController extends Controller
 {
     use ApiResponse;
 
-    public function stats(): JsonResponse
+    public function stats(PlayerStatsService $statsService): JsonResponse
     {
-        $user = auth()->user();
-        $stats = PlayerStats::firstOrCreate(['user_id' => $user->id]);
-        $stats->load(['favoriteSport', 'favoriteVenue']);
-
-        return $this->success([
-            'total_bookings' => $stats->total_bookings,
-            'completed_bookings' => $stats->completed_bookings,
-            'cancelled_bookings' => $stats->cancelled_bookings,
-            'total_hours_played' => $stats->total_hours_played,
-            'total_spent' => $stats->total_spent,
-            'favorite_sport' => $stats->favoriteSport?->name,
-            'favorite_venue' => $stats->favoriteVenue?->name,
-            'average_rating_given' => $stats->average_rating_given,
-            'current_streak' => $stats->streak_days,
-            'bookings_this_month' => $stats->bookings_this_month,
-        ]);
+        return $this->success($statsService->statsArray(auth()->user()));
     }
 
-    public function achievements(): JsonResponse
+    public function achievements(AchievementsService $achievementsService): JsonResponse
     {
-        $achievements = auth()->user()->achievements;
-
-        $totalPoints = $achievements
-            ->filter(fn ($a) => $a->isUnlocked())
-            ->sum(fn ($a) => $a->getMetadata()['points']);
-
-        return $this->success([
-            'achievements' => $achievements->map(fn ($achievement) => [
-                'type' => $achievement->type->value,
-                'metadata' => $achievement->getMetadata(),
-                'progress' => $achievement->progress,
-                'target' => $achievement->target,
-                'unlocked' => $achievement->isUnlocked(),
-                'unlocked_at' => $achievement->unlocked_at?->toIso8601String(),
-            ])->values(),
-            'total_points' => $totalPoints,
-        ]);
+        return $this->success($achievementsService->achievementsArray(auth()->user()));
     }
 
     public function history(): JsonResponse

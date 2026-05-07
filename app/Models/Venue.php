@@ -158,24 +158,65 @@ class Venue extends Model implements HasMedia, Sortable
         $like = '%'.$term.'%';
 
         return $query->where(function (Builder $q) use ($like) {
-            $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.ar')) LIKE ?", [$like])
-                ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(name, '$.en')) LIKE ?", [$like])
-                ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(description, '$.ar')) LIKE ?", [$like])
-                ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(description, '$.en')) LIKE ?", [$like]);
+            $q->where('name->ar', 'LIKE', $like)
+                ->orWhere('name->en', 'LIKE', $like)
+                ->orWhere('description->ar', 'LIKE', $like)
+                ->orWhere('description->en', 'LIKE', $like);
         });
     }
 
-    public function scopeNearby(Builder $query, float $latitude, float $longitude, float $radiusKm = 10): Builder
+    /**
+     * Filter venues to those inside a lat/lng bounding box. The box is
+     * specified by its north/south latitudes and east/west longitudes
+     * (inclusive on all four sides — `whereBetween` is inclusive).
+     *
+     * Portable across MySQL / MariaDB / SQLite — `BETWEEN` semantics
+     * for our `decimal(10,8)` / `decimal(11,8)` lat/lng columns are
+     * identical across drivers, so no driver branch is required here
+     * (unlike `scopeNearby`, which needs trig helpers).
+     *
+     * Limitation: does NOT handle the antimeridian case (a box that
+     * crosses ±180° longitude, where `west > east`). For Syria — and
+     * for any single-country viewport — this is fine. If a global
+     * deployment ever needs it, split the query into two unioned
+     * calls.
+     */
+    public function scopeWithinBounds(Builder $query, float $north, float $south, float $east, float $west): Builder
     {
         return $query
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
-            ->selectRaw(
-                '*, ( 6371 * acos( cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)) ) ) AS distance_km',
-                [$latitude, $longitude, $latitude],
-            )
-            ->havingRaw('distance_km <= ?', [$radiusKm])
-            ->orderBy('distance_km');
+            ->whereBetween('latitude', [$south, $north])
+            ->whereBetween('longitude', [$west, $east]);
+    }
+
+    public function scopeNearby(Builder $query, float $latitude, float $longitude, float $radiusKm = 10): Builder
+    {
+        $query->whereNotNull('latitude')->whereNotNull('longitude');
+
+        $driver = $query->getQuery()->getConnection()->getDriverName();
+
+        if ($driver === 'mysql' || $driver === 'mariadb') {
+            return $query
+                ->selectRaw(
+                    '*, ( 6371 * acos( cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)) ) ) AS distance_km',
+                    [$latitude, $longitude, $latitude],
+                )
+                ->havingRaw('distance_km <= ?', [$radiusKm])
+                ->orderBy('distance_km');
+        }
+
+        // Portable bounding-box pre-filter for drivers without trig helpers
+        // (SQLite). One degree of latitude is ~111 km; longitude shrinks by
+        // cos(latitude). The outer caller can apply a precise Haversine in
+        // PHP if it needs sorted distances on these drivers.
+        $latDelta = $radiusKm / 111.0;
+        $lngDelta = $radiusKm / max(0.0001, 111.0 * cos(deg2rad($latitude)));
+
+        return $query
+            ->whereBetween('latitude', [$latitude - $latDelta, $latitude + $latDelta])
+            ->whereBetween('longitude', [$longitude - $lngDelta, $longitude + $lngDelta])
+            ->orderBy('id');
     }
 
     public function isOpenNow(?\DateTimeInterface $at = null): bool

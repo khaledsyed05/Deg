@@ -65,9 +65,16 @@ use App\Services\Auth\FirebaseAuthService;
 use App\Services\Notification\BaileysService;
 use App\Services\Notification\FcmService;
 use App\Services\Notification\SmsService;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
+use Pusher\Pusher;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -97,6 +104,18 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(FirebaseAuthService::class, fn () => new FirebaseAuthService(
             projectId: (string) config('services.firebase.project_id', ''),
         ));
+
+        $this->app->singleton(Pusher::class, function () {
+            return new Pusher(
+                (string) (env('PUSHER_APP_KEY') ?: 'placeholder-key'),
+                (string) (env('PUSHER_APP_SECRET') ?: 'placeholder-secret'),
+                (string) (env('PUSHER_APP_ID') ?: 'placeholder-app-id'),
+                [
+                    'cluster' => (string) (env('PUSHER_APP_CLUSTER') ?: 'mt1'),
+                    'useTLS' => true,
+                ],
+            );
+        });
 
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
         $this->app->bind(ClubRepositoryInterface::class, ClubRepository::class);
@@ -132,6 +151,31 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->warnIfFirebaseMisconfigured();
+        $this->registerRateLimiters();
+
+        Response::macro('paginatedEnvelope', function (
+            LengthAwarePaginator $paginator,
+            ?string $resourceClass = null,
+            ?string $message = null,
+            int $code = 200,
+        ) {
+            $items = $resourceClass !== null && is_subclass_of($resourceClass, JsonResource::class)
+                ? $resourceClass::collection($paginator)->resolve()
+                : $paginator->items();
+
+            return Response::json([
+                'success' => true,
+                'message' => $message,
+                'data' => $items,
+                'errors' => null,
+                'meta' => [
+                    'current_page' => $paginator->currentPage(),
+                    'per_page' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                    'last_page' => $paginator->lastPage(),
+                ],
+            ], $code);
+        });
 
         Inertia::share([
             'auth' => fn () => [
@@ -162,6 +206,71 @@ class AppServiceProvider extends ServiceProvider
                 ] : null;
             },
         ]);
+    }
+
+    /**
+     * Register rate limiters for the mobile API. Sprint 8 hardening.
+     *
+     * Tunable values — these are conservative starting points. Bump
+     * upward on any limiter that legitimate users hit in practice.
+     */
+    private function registerRateLimiters(): void
+    {
+        RateLimiter::for('auth-otp-send', function (Request $request) {
+            $phone = (string) $request->input('phone', 'unknown');
+
+            return [
+                Limit::perMinute(3)->by('phone:'.$phone),
+                Limit::perHour(10)->by('ip:'.$request->ip()),
+            ];
+        });
+
+        RateLimiter::for('auth-otp-verify', function (Request $request) {
+            $phone = (string) $request->input('phone', 'unknown');
+
+            return Limit::perMinutes(10, 5)->by('phone:'.$phone);
+        });
+
+        RateLimiter::for('payments', function (Request $request) {
+            return Limit::perHour(10)->by(self::keyForUserOrIp($request));
+        });
+
+        RateLimiter::for('chat-send', function (Request $request) {
+            return Limit::perMinute(60)->by(self::keyForUserOrIp($request));
+        });
+
+        RateLimiter::for('chat-mark-read', function (Request $request) {
+            return Limit::perMinute(200)->by(self::keyForUserOrIp($request));
+        });
+
+        RateLimiter::for('profile-mutations', function (Request $request) {
+            return Limit::perHour(20)->by(self::keyForUserOrIp($request));
+        });
+
+        RateLimiter::for('team-invites', function (Request $request) {
+            $teamId = $request->route('id') ?? 'unknown';
+
+            return Limit::perHour(10)->by('team:'.$teamId);
+        });
+
+        RateLimiter::for('bookings-create', function (Request $request) {
+            return Limit::perHour(30)->by(self::keyForUserOrIp($request));
+        });
+
+        RateLimiter::for('pusher-auth', function (Request $request) {
+            return Limit::perMinute(60)->by(self::keyForUserOrIp($request));
+        });
+
+        RateLimiter::for('default-mutations', function (Request $request) {
+            return Limit::perMinute(60)->by(self::keyForUserOrIp($request));
+        });
+    }
+
+    private static function keyForUserOrIp(Request $request): string
+    {
+        $user = $request->user();
+
+        return $user ? 'user:'.$user->id : 'ip:'.$request->ip();
     }
 
     private function warnIfFirebaseMisconfigured(): void

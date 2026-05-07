@@ -17,14 +17,14 @@ class FieldShowTest extends TestCase
     {
         $venue = Venue::factory()->create();
 
-        $this->getJson('/api/v1/venues/' . $venue->id)->assertOk();
+        $this->getJson('/api/v1/venues/'.$venue->slug)->assertOk();
     }
 
     public function test_returns_a_venue_successfully(): void
     {
         $venue = Venue::factory()->create();
 
-        $this->getJson('/api/v1/venues/' . $venue->id)
+        $this->getJson('/api/v1/venues/'.$venue->slug)
             ->assertOk()
             ->assertJsonPath('data.id', $venue->id);
     }

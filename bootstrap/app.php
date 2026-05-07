@@ -5,6 +5,7 @@ use App\Http\Middleware\CheckMaintenanceMode;
 use App\Http\Middleware\EnsureClubAccess;
 use App\Http\Middleware\EnsureJsonErrorShape;
 use App\Http\Middleware\EnsureQueueIsRunning;
+use App\Http\Middleware\VerifyWebhookSignature;
 use App\Http\SetLocale;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -47,6 +48,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'club.access' => EnsureClubAccess::class,
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
+            'verify.webhook' => VerifyWebhookSignature::class,
         ]);
 
         $middleware->api(append: [
@@ -64,6 +66,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage(),
+                    'data' => null,
                     'errors' => $e->errors(),
                 ], 422);
             }
@@ -72,6 +75,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage() ?: 'Unauthenticated',
+                    'data' => null,
                     'errors' => null,
                 ], 401);
             }
@@ -80,6 +84,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage() ?: 'Forbidden',
+                    'data' => null,
                     'errors' => null,
                 ], 403);
             }
@@ -90,6 +95,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => "{$model} not found",
+                    'data' => null,
                     'errors' => null,
                 ], 404);
             }
@@ -98,6 +104,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage() ?: 'Endpoint not found',
+                    'data' => null,
                     'errors' => null,
                 ], 404);
             }
@@ -106,22 +113,30 @@ return Application::configure(basePath: dirname(__DIR__))
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage() ?: 'Method not allowed',
+                    'data' => null,
                     'errors' => null,
                 ], 405);
             }
 
             if ($e instanceof ThrottleRequestsException) {
+                $headers = $e->getHeaders();
+                $retryAfter = isset($headers['Retry-After']) ? (int) $headers['Retry-After'] : null;
+
                 return response()->json([
                     'success' => false,
-                    'message' => $e->getMessage() ?: 'Too many requests',
-                    'errors' => null,
-                ], 429);
+                    'message' => __('api.too_many_requests') !== 'api.too_many_requests'
+                        ? __('api.too_many_requests')
+                        : ($e->getMessage() ?: 'Too many requests'),
+                    'data' => null,
+                    'errors' => $retryAfter !== null ? ['retry_after' => $retryAfter] : null,
+                ], 429, $headers);
             }
 
             if ($e instanceof HttpExceptionInterface) {
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage() ?: 'HTTP error',
+                    'data' => null,
                     'errors' => null,
                 ], $e->getStatusCode());
             }
@@ -136,6 +151,7 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->json([
                 'success' => false,
                 'message' => app()->hasDebugModeEnabled() ? $e->getMessage() : 'Server error',
+                'data' => null,
                 'errors' => app()->hasDebugModeEnabled() ? [
                     'exception' => $e::class,
                     'file' => $e->getFile().':'.$e->getLine(),

@@ -6,6 +6,7 @@ use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\User;
 use App\Models\Venue;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -18,7 +19,7 @@ class BookingFactory extends Factory
     {
         $bookingDate = fake()->dateTimeBetween('+1 day', '+30 days');
         $startTime = fake()->randomElement(['16:00', '17:00', '18:00', '19:00', '20:00']);
-        $startsAt = \Carbon\Carbon::parse($bookingDate->format('Y-m-d') . ' ' . $startTime);
+        $startsAt = Carbon::parse($bookingDate->format('Y-m-d').' '.$startTime);
         $endsAt = $startsAt->copy()->addHour();
         $venuePrice = fake()->randomElement([40000, 45000, 50000]);
         $commissionAmount = (int) ($venuePrice * 0.07);
@@ -26,7 +27,7 @@ class BookingFactory extends Factory
         return [
             'user_id' => User::factory(),
             'venue_id' => Venue::factory(),
-            'booking_code' => 'BK' . strtoupper(Str::random(8)),
+            'booking_code' => 'BK'.strtoupper(Str::random(8)),
             'source' => 'mobile',
             'status' => BookingStatus::Confirmed,
             'booking_date' => $bookingDate->format('Y-m-d'),
@@ -69,5 +70,10 @@ class BookingFactory extends Factory
             'status' => BookingStatus::Cancelled,
             'cancelled_at' => now(),
         ]);
+    }
+
+    public function pendingPayment(): static
+    {
+        return $this->state(fn () => ['status' => BookingStatus::PendingPayment]);
     }
 }

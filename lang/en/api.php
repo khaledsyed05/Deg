@@ -1,0 +1,5 @@
+<?php
+
+return [
+    'too_many_requests' => 'Too many requests, please try again later',
+];

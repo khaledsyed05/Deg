@@ -58,4 +58,20 @@ return [
         'service_account' => env('FIREBASE_SERVICE_ACCOUNT'),
     ],
 
+    // Sprint 8 B3 — webhook signature verification per provider.
+    // verify_signatures defaults to false in dev/sandbox so providers
+    // that don't sign yet can still call back without 401. Production
+    // sets PAYMENT_VERIFY_SIGNATURES=true.
+    'syriatel' => [
+        'webhook_secret' => env('SYRIATEL_WEBHOOK_SECRET'),
+        'webhook_header' => env('SYRIATEL_WEBHOOK_HEADER', 'X-Signature'),
+        'verify_signatures' => env('PAYMENT_VERIFY_SIGNATURES', false),
+    ],
+
+    'mtn' => [
+        'webhook_secret' => env('MTN_WEBHOOK_SECRET'),
+        'webhook_header' => env('MTN_WEBHOOK_HEADER', 'X-Signature'),
+        'verify_signatures' => env('PAYMENT_VERIFY_SIGNATURES', false),
+    ],
+
 ];

@@ -20,6 +20,7 @@ class Wallet extends Model
             'total_earned' => 'integer',
             'total_spent' => 'integer',
             'total_topup' => 'integer',
+            'settings' => 'array',
         ];
     }
 

@@ -11,6 +11,7 @@ use App\Jobs\Waitlist\NotifyWaitlistJob;
 use App\Models\Booking;
 use App\Models\PlayerStats;
 use App\Models\User;
+use App\Services\SportsProfile\WeeklyActivityService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -19,6 +20,7 @@ class BookingObserver
     public function created(Booking $booking): void
     {
         $this->updateStatsOnCreate($booking);
+        $this->forgetWeeklyActivityCache($booking);
 
         if ($booking->status !== BookingStatus::Confirmed) {
             return;
@@ -53,6 +55,7 @@ class BookingObserver
         }
 
         $this->updateStatsOnStatusChange($booking);
+        $this->forgetWeeklyActivityCache($booking);
 
         if ($booking->status !== BookingStatus::Cancelled) {
             return;
@@ -69,6 +72,35 @@ class BookingObserver
             );
         } catch (\Throwable $e) {
             Log::error('BookingObserver: failed to dispatch cancellation jobs', [
+                'booking_id' => $booking->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function deleted(Booking $booking): void
+    {
+        $this->forgetWeeklyActivityCache($booking);
+    }
+
+    /**
+     * Invalidate the user's weekly-activity cache so the next read
+     * recomputes. Called from created/updated/deleted hooks. Failure
+     * is non-fatal — the cache will roll over at the next 15-minute
+     * TTL anyway.
+     */
+    protected function forgetWeeklyActivityCache(Booking $booking): void
+    {
+        $user = $booking->user;
+
+        if (! $user) {
+            return;
+        }
+
+        try {
+            app(WeeklyActivityService::class)->forget($user);
+        } catch (\Throwable $e) {
+            Log::warning('BookingObserver: failed to invalidate weekly activity cache', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
             ]);

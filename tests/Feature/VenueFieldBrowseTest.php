@@ -17,16 +17,16 @@ class VenueFieldBrowseTest extends TestCase
     {
         $venue = Venue::factory()->create(['status' => 'active']);
 
-        $this->getJson('/api/v1/venues/' . $venue->id . '/slots?' . http_build_query([
-            'date'             => now()->addDay()->toDateString(),
+        $this->getJson('/api/v1/venues/'.$venue->slug.'/slots?'.http_build_query([
+            'date' => now()->addDay()->toDateString(),
             'duration_minutes' => 60,
         ]))->assertOk();
     }
 
     public function test_nonexistent_venue_returns_404(): void
     {
-        $this->getJson('/api/v1/venues/99999/slots?' . http_build_query([
-            'date'             => now()->addDay()->toDateString(),
+        $this->getJson('/api/v1/venues/99999/slots?'.http_build_query([
+            'date' => now()->addDay()->toDateString(),
             'duration_minutes' => 60,
         ]))->assertNotFound();
     }
@@ -35,7 +35,7 @@ class VenueFieldBrowseTest extends TestCase
     {
         $venue = Venue::factory()->create(['status' => 'active']);
 
-        $this->getJson('/api/v1/venues/' . $venue->id . '/slots?duration_minutes=60')
+        $this->getJson('/api/v1/venues/'.$venue->slug.'/slots?duration_minutes=60')
             ->assertUnprocessable();
     }
 
@@ -43,7 +43,7 @@ class VenueFieldBrowseTest extends TestCase
     {
         $venue = Venue::factory()->create(['status' => 'active']);
 
-        $this->getJson('/api/v1/venues/' . $venue->id . '/slots?date=' . now()->addDay()->toDateString())
+        $this->getJson('/api/v1/venues/'.$venue->slug.'/slots?date='.now()->addDay()->toDateString())
             ->assertUnprocessable();
     }
 }

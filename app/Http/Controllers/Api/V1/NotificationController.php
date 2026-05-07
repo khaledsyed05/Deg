@@ -9,20 +9,19 @@ use App\Http\Traits\ApiResponse;
 use App\Models\NotificationSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class NotificationController extends Controller
 {
     use ApiResponse;
 
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): JsonResponse
     {
         $notifications = $request->user()
             ->notifications()
             ->latest()
             ->paginate(20);
 
-        return NotificationResource::collection($notifications);
+        return $this->paginated($notifications, NotificationResource::class);
     }
 
     public function unread(Request $request): JsonResponse

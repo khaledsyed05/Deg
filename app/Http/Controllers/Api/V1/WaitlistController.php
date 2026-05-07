@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Waitlist\JoinWaitlistRequest;
 use App\Http\Resources\WaitlistResource;
+use App\Http\Traits\ApiResponse;
 use App\Models\VenueWaitlist;
 use App\Repositories\Contracts\VenueWaitlistRepositoryInterface;
 use Carbon\Carbon;
@@ -13,6 +14,8 @@ use Illuminate\Http\JsonResponse;
 
 class WaitlistController extends Controller
 {
+    use ApiResponse;
+
     public function __construct(
         private VenueWaitlistRepositoryInterface $waitlistRepo,
     ) {}
@@ -28,10 +31,7 @@ class WaitlistController extends Controller
     {
         $entries = $this->waitlistRepo->findForUser(auth()->id());
 
-        return response()->json([
-            'success' => true,
-            'data' => WaitlistResource::collection($entries),
-        ]);
+        return $this->success(WaitlistResource::collection($entries));
     }
 
     /**

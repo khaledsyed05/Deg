@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Exceptions\Moderation\ModerationException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Venue\ByBoundsRequest;
 use App\Http\Requests\Api\V1\Venue\GetAvailableSlotsRequest;
 use App\Http\Requests\Api\V1\Venue\ListVenuesRequest;
 use App\Http\Requests\Api\V1\Venue\NearbyVenuesRequest;
 use App\Http\Requests\Api\V1\Venue\ReportVenueRequest;
 use App\Http\Requests\Api\V1\Venue\SearchVenuesRequest;
 use App\Http\Resources\V1\Venue\VenueDetailResource;
+use App\Http\Resources\Venue\VenueMapResource;
 use App\Http\Resources\VenueResource;
 use App\Http\Traits\ApiResponse;
 use App\Models\Venue;
@@ -20,7 +22,6 @@ use App\Services\Venue\VenueExtrasService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class VenueController extends Controller
 {
@@ -33,7 +34,7 @@ class VenueController extends Controller
         private SlotAvailabilityService $slotAvailabilityService,
     ) {}
 
-    public function index(ListVenuesRequest $request): AnonymousResourceCollection
+    public function index(ListVenuesRequest $request): JsonResponse
     {
         $query = $this->baseListQuery();
 
@@ -55,12 +56,13 @@ class VenueController extends Controller
 
         $this->applySort($query, $request->input('sort_by'));
 
-        return VenueResource::collection(
+        return $this->paginated(
             $query->paginate($request->integer('per_page') ?: 15),
+            VenueResource::class,
         );
     }
 
-    public function search(SearchVenuesRequest $request): AnonymousResourceCollection
+    public function search(SearchVenuesRequest $request): JsonResponse
     {
         $query = $this->baseListQuery()->searchTranslated((string) $request->input('query'));
 
@@ -72,12 +74,39 @@ class VenueController extends Controller
             $query->withCategory($request->integer('category_id'));
         }
 
-        return VenueResource::collection(
+        return $this->paginated(
             $query->paginate($request->integer('per_page') ?: 15),
+            VenueResource::class,
         );
     }
 
-    public function nearby(NearbyVenuesRequest $request): AnonymousResourceCollection
+    /**
+     * Lightweight venue list inside a lat/lng bounding box. Tuned for
+     * map viewports — returns {@see VenueMapResource}, not the full
+     * venue resource, so a 200-marker viewport paints fast on mobile.
+     */
+    public function byBounds(ByBoundsRequest $request): JsonResponse
+    {
+        $categoryId = $request->integer('category_id') ?: $request->integer('sport_id');
+        $limit = $request->integer('limit') ?: 200;
+
+        $venues = $this->venueRepo->query()
+            ->active()
+            ->with(['club.city'])
+            ->withinBounds(
+                north: (float) $request->validated('north'),
+                south: (float) $request->validated('south'),
+                east: (float) $request->validated('east'),
+                west: (float) $request->validated('west'),
+            )
+            ->when($categoryId, fn ($q, $id) => $q->where('category_id', $id))
+            ->limit($limit)
+            ->get();
+
+        return $this->success(VenueMapResource::collection($venues));
+    }
+
+    public function nearby(NearbyVenuesRequest $request): JsonResponse
     {
         $query = $this->baseListQuery()->nearby(
             (float) $request->input('latitude'),
@@ -89,12 +118,13 @@ class VenueController extends Controller
             $query->withCategory($request->integer('category_id'));
         }
 
-        return VenueResource::collection(
+        return $this->paginated(
             $query->paginate($request->integer('per_page') ?: 15),
+            VenueResource::class,
         );
     }
 
-    public function featured(): AnonymousResourceCollection
+    public function featured(): JsonResponse
     {
         $venues = $this->baseListQuery()
             ->featured()
@@ -102,7 +132,7 @@ class VenueController extends Controller
             ->limit(10)
             ->get();
 
-        return VenueResource::collection($venues);
+        return $this->success(VenueResource::collection($venues));
     }
 
     public function popular(Request $request, VenueExtrasService $service): JsonResponse
@@ -137,10 +167,7 @@ class VenueController extends Controller
         $venue->load(['category', 'club.city', 'media']);
         $venue->recordView(request()->user(), request()->ip());
 
-        return response()->json([
-            'success' => true,
-            'data' => new VenueDetailResource($venue),
-        ]);
+        return $this->success(new VenueDetailResource($venue));
     }
 
     public function availability(Venue $venue): JsonResponse
@@ -173,20 +200,17 @@ class VenueController extends Controller
             ]);
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'reviews' => $reviews->items(),
-                'meta' => [
-                    'current_page' => $reviews->currentPage(),
-                    'last_page' => $reviews->lastPage(),
-                    'per_page' => $reviews->perPage(),
-                    'total' => $reviews->total(),
-                ],
-                'rating_summary' => [
-                    'average' => (float) ($venue->avg_rating ?? 0),
-                    'total' => (int) ($venue->reviews_count ?? 0),
-                ],
+        return $this->success([
+            'reviews' => $reviews->items(),
+            'meta' => [
+                'current_page' => $reviews->currentPage(),
+                'last_page' => $reviews->lastPage(),
+                'per_page' => $reviews->perPage(),
+                'total' => $reviews->total(),
+            ],
+            'rating_summary' => [
+                'average' => (float) ($venue->avg_rating ?? 0),
+                'total' => (int) ($venue->reviews_count ?? 0),
             ],
         ]);
     }
@@ -200,12 +224,9 @@ class VenueController extends Controller
             durationMinutes: $request->duration_minutes,
         );
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'available' => $result->available,
-                'unavailable_reason' => $result->unavailableReason,
-            ],
+        return $this->success([
+            'available' => $result->available,
+            'unavailable_reason' => $result->unavailableReason,
         ]);
     }
 

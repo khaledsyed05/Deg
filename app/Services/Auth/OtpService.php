@@ -23,11 +23,13 @@ class OtpService
         private BaileysService $baileysService,
     ) {}
 
-    public function send(string $phoneNumber, ?string $ipAddress = null): string
+    public function send(string $phoneNumber, ?string $ipAddress = null, ?string $channel = null): string
     {
         $code = $this->generateCode();
         $uuid = Str::uuid()->toString();
-        $channel = $this->baileysService->detectChannel($phoneNumber);
+        $channel = $channel !== null && in_array($channel, ['whatsapp', 'sms'], true)
+            ? $channel
+            : $this->baileysService->detectChannel($phoneNumber);
 
         $this->otpRepo->create([
             'uuid' => $uuid,

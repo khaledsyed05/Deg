@@ -18,6 +18,9 @@ use App\Http\Controllers\Api\V1\App\AppMetadataController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\CategoryController;
+use App\Http\Controllers\Api\V1\Chat\ConversationController as ChatConversationController;
+use App\Http\Controllers\Api\V1\Chat\MessageController as ChatMessageController;
+use App\Http\Controllers\Api\V1\Chat\PusherAuthController as ChatPusherAuthController;
 use App\Http\Controllers\Api\V1\Club\ClubController as PublicClubController;
 use App\Http\Controllers\Api\V1\Club\ManageBookingController;
 use App\Http\Controllers\Api\V1\Club\MyEventController;
@@ -53,6 +56,7 @@ use App\Http\Controllers\Api\V1\ReviewController;
 use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\SocialController;
+use App\Http\Controllers\Api\V1\SportsProfileController;
 use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\SupportController;
 use App\Http\Controllers\Api\V1\TeamController;
@@ -74,12 +78,16 @@ use Illuminate\Support\Facades\Route;
 */
 Route::prefix('v1')->group(function () {
 
-    // Auth — public
+    // Auth — public (rate-limited per Sprint 8 B1)
     Route::prefix('auth')->group(function () {
-        Route::post('otp/send', [AuthController::class, 'sendOtp']);
-        Route::post('otp/verify', [AuthController::class, 'verifyOtp']);
-        Route::post('otp/resend', [AuthController::class, 'resendOtp']);
-        Route::post('google', [AuthController::class, 'googleSignIn']);
+        Route::post('otp/send', [AuthController::class, 'sendOtp'])
+            ->middleware('throttle:auth-otp-send');
+        Route::post('otp/verify', [AuthController::class, 'verifyOtp'])
+            ->middleware('throttle:auth-otp-verify');
+        Route::post('otp/resend', [AuthController::class, 'resendOtp'])
+            ->middleware('throttle:auth-otp-send');
+        Route::post('google', [AuthController::class, 'googleSignIn'])
+            ->middleware('throttle:auth-otp-send');
     });
 
     // Venues — public (specific paths before {venue} wildcard)
@@ -89,6 +97,9 @@ Route::prefix('v1')->group(function () {
     Route::get('venues/featured', [VenueController::class, 'featured']);
     Route::get('venues/popular', [VenueController::class, 'popular']);
     Route::get('venues/recently-viewed', [VenueController::class, 'recentlyViewed'])
+        ->middleware('auth:sanctum');
+    Route::get('venues/clusters', [PublicGeographyController::class, 'venueClusters']);
+    Route::get('venues/by-bounds', [VenueController::class, 'byBounds'])
         ->middleware('auth:sanctum');
     Route::get('venues/{venue}', [VenueController::class, 'show']);
     Route::get('venues/{venue}/availability', [VenueController::class, 'availability']);
@@ -101,15 +112,22 @@ Route::prefix('v1')->group(function () {
     Route::get('categories', [CategoryController::class, 'index']);
     Route::get('categories/{category}', [CategoryController::class, 'show']);
 
-    // Geography — public (Phase 14)
+    // Geography — canonical paths (per BACKEND_REQUIREMENTS.md)
+    // (venues/clusters is registered above with the other venues/* routes
+    // so it's matched before venues/{venue})
+    Route::get('cities', [PublicGeographyController::class, 'popularCities']);
+    Route::get('cities/{id}', [PublicGeographyController::class, 'show'])->whereNumber('id');
+    Route::get('cities/{id}/neighborhoods', [PublicGeographyController::class, 'neighborhoods'])->whereNumber('id');
+
+    // Geography — kept (no canonical mobile equivalent; web admin uses
+    // these for country/state pickers in venue/club registration forms.
+    // Cities/popular, cities/{id}, and venues/clusters were removed in
+    // Sprint 8 — callers must use the canonical paths above.)
     Route::prefix('geography')->group(function () {
         Route::get('countries', [PublicGeographyController::class, 'countries']);
         Route::get('countries/{iso2}/states', [PublicGeographyController::class, 'statesByCountry']);
         Route::get('states/{stateId}/cities', [PublicGeographyController::class, 'citiesByState'])->whereNumber('stateId');
-        Route::get('cities/popular', [PublicGeographyController::class, 'popularCities']);
-        Route::get('cities/{id}', [PublicGeographyController::class, 'show'])->whereNumber('id');
         Route::post('detect', [PublicGeographyController::class, 'detect']);
-        Route::get('venues/clusters', [PublicGeographyController::class, 'venueClusters']);
     });
 
     // App metadata — public (Phase 14)
@@ -172,10 +190,14 @@ Route::prefix('v1')->group(function () {
 
         // Profile
         Route::get('profile', [ProfileController::class, 'show']);
-        Route::put('profile', [ProfileController::class, 'update']);
-        Route::post('profile/avatar', [ProfileController::class, 'uploadAvatar']);
-        Route::delete('profile/avatar', [ProfileController::class, 'deleteAvatar']);
-        Route::put('profile/notifications', [ProfileController::class, 'updateNotifications']);
+        Route::put('profile', [ProfileController::class, 'update'])
+            ->middleware('throttle:profile-mutations');
+        Route::post('profile/avatar', [ProfileController::class, 'uploadAvatar'])
+            ->middleware('throttle:profile-mutations');
+        Route::delete('profile/avatar', [ProfileController::class, 'deleteAvatar'])
+            ->middleware('throttle:profile-mutations');
+        Route::put('profile/notifications', [ProfileController::class, 'updateNotifications'])
+            ->middleware('throttle:profile-mutations');
 
         // Devices
         Route::post('devices', [DeviceController::class, 'register']);
@@ -192,7 +214,8 @@ Route::prefix('v1')->group(function () {
         Route::get('bookings/upcoming', [BookingController::class, 'upcoming']);
         Route::get('bookings/past', [BookingController::class, 'past']);
         Route::get('bookings', [BookingController::class, 'index']);
-        Route::post('bookings', [BookingController::class, 'store']);
+        Route::post('bookings', [BookingController::class, 'store'])
+            ->middleware('throttle:bookings-create');
         Route::get('bookings/{booking}', [BookingController::class, 'show']);
         Route::get('bookings/{booking}/receipt', [BookingController::class, 'receipt']);
         Route::post('bookings/{booking}/checkin', [BookingController::class, 'checkin']);
@@ -209,34 +232,38 @@ Route::prefix('v1')->group(function () {
         Route::get('support/tickets/{id}', [SupportController::class, 'showTicket'])->whereNumber('id');
         Route::post('support/tickets/{id}/reply', [SupportController::class, 'replyTicket'])->whereNumber('id');
 
-        // Payments
-        // Payments — unified (legacy)
-        Route::post('payments/initiate', [PaymentController::class, 'initiate']);
-        Route::post('payments/mtn/confirm', [PaymentController::class, 'confirmMtn']);
-        Route::post('payments/syriatel/confirm', [PaymentController::class, 'confirmSyriatel']);
+        // Payments — rate-limited per Sprint 8 B1 (POST routes only;
+        // GET status/history endpoints are read-only and unrestricted)
+        Route::middleware('throttle:payments')->group(function () {
+            // Payments — unified (legacy)
+            Route::post('payments/initiate', [PaymentController::class, 'initiate']);
+            Route::post('payments/mtn/confirm', [PaymentController::class, 'confirmMtn']);
+            Route::post('payments/syriatel/confirm', [PaymentController::class, 'confirmSyriatel']);
 
-        // Payments — Syriatel Cash (Phase 4)
-        Route::post('payments/syriatel/initiate', [SyriatelCashController::class, 'initiate']);
-        Route::post('payments/syriatel/verify', [SyriatelCashController::class, 'verify']);
-        Route::post('payments/syriatel/resend', [SyriatelCashController::class, 'resend']);
+            // Payments — Syriatel Cash (Phase 4)
+            Route::post('payments/syriatel/initiate', [SyriatelCashController::class, 'initiate']);
+            Route::post('payments/syriatel/verify', [SyriatelCashController::class, 'verify']);
+            Route::post('payments/syriatel/resend', [SyriatelCashController::class, 'resend']);
+            Route::post('payments/syriatel/cancel/{payment}', [SyriatelCashController::class, 'cancel']);
+
+            // Payments — MTN Cash (Phase 4)
+            Route::post('payments/mtn/initiate', [MtnCashController::class, 'initiate']);
+            Route::post('payments/mtn/verify', [MtnCashController::class, 'verify']);
+            Route::post('payments/mtn/resend', [MtnCashController::class, 'resend']);
+            Route::post('payments/mtn/cancel/{payment}', [MtnCashController::class, 'cancel']);
+
+            // Payments — Bank Transfer (Phase 4, backed by Fatora gateway)
+            Route::post('payments/bank/initiate', [BankTransferController::class, 'initiate']);
+            Route::post('payments/bank/cancel/{payment}', [BankTransferController::class, 'cancel']);
+
+            // Payments — Cash at Venue (Phase 4)
+            Route::post('payments/cash/confirm', [CashController::class, 'confirm']);
+        });
+
         Route::get('payments/syriatel/status/{payment}', [SyriatelCashController::class, 'status']);
-        Route::post('payments/syriatel/cancel/{payment}', [SyriatelCashController::class, 'cancel']);
-
-        // Payments — MTN Cash (Phase 4)
-        Route::post('payments/mtn/initiate', [MtnCashController::class, 'initiate']);
-        Route::post('payments/mtn/verify', [MtnCashController::class, 'verify']);
-        Route::post('payments/mtn/resend', [MtnCashController::class, 'resend']);
         Route::get('payments/mtn/status/{payment}', [MtnCashController::class, 'status']);
-        Route::post('payments/mtn/cancel/{payment}', [MtnCashController::class, 'cancel']);
-
-        // Payments — Bank Transfer (Phase 4, backed by Fatora gateway)
-        Route::post('payments/bank/initiate', [BankTransferController::class, 'initiate']);
         Route::get('payments/bank/view', [BankTransferController::class, 'view']);
         Route::get('payments/bank/success', [BankTransferController::class, 'success']);
-        Route::post('payments/bank/cancel/{payment}', [BankTransferController::class, 'cancel']);
-
-        // Payments — Cash at Venue (Phase 4)
-        Route::post('payments/cash/confirm', [CashController::class, 'confirm']);
         Route::get('payments/cash/instructions', [CashController::class, 'instructions']);
 
         // Payments — common (Phase 4)
@@ -325,7 +352,44 @@ Route::prefix('v1')->group(function () {
         // Teams (Phase 9)
         Route::get('teams', [TeamController::class, 'index']);
         Route::post('teams', [TeamController::class, 'store']);
+        Route::get('teams/invite/{code}', [TeamController::class, 'useInvite'])
+            ->where('code', '[A-Za-z0-9]+');
         Route::get('teams/{id}', [TeamController::class, 'show'])->whereNumber('id');
+        Route::put('teams/{id}', [TeamController::class, 'update'])->whereNumber('id');
+        Route::delete('teams/{id}', [TeamController::class, 'destroy'])->whereNumber('id');
+        Route::post('teams/{id}/kick', [TeamController::class, 'kick'])->whereNumber('id');
+        Route::post('teams/{id}/transfer-captain', [TeamController::class, 'transferCaptain'])
+            ->whereNumber('id');
+        Route::post('teams/{id}/invite', [TeamController::class, 'generateInvite'])
+            ->whereNumber('id')
+            ->middleware('throttle:team-invites');
+
+        // Sports Profile (Phase 9 — Sprint 5)
+        Route::prefix('sports-profile')->group(function (): void {
+            Route::get('me', [SportsProfileController::class, 'me']);
+            Route::get('weekly-activity', [SportsProfileController::class, 'weeklyActivity']);
+        });
+
+        // Chat (Phase 10 — Sprint 7; rate-limited per Sprint 8 B1)
+        Route::get('chat/unread-summary', [ChatConversationController::class, 'unreadSummary']);
+        Route::get('conversations', [ChatConversationController::class, 'index']);
+        Route::get('conversations/{id}', [ChatConversationController::class, 'show'])
+            ->whereNumber('id');
+        Route::get('conversations/{id}/messages', [ChatConversationController::class, 'messages'])
+            ->whereNumber('id');
+        Route::post('conversations/{id}/mute', [ChatConversationController::class, 'mute'])
+            ->whereNumber('id')
+            ->middleware('throttle:default-mutations');
+        Route::post('conversations/{id}/leave', [ChatConversationController::class, 'leave'])
+            ->whereNumber('id')
+            ->middleware('throttle:default-mutations');
+        Route::post('messages', [ChatMessageController::class, 'store'])
+            ->middleware('throttle:chat-send');
+        Route::post('messages/{id}/mark-read', [ChatMessageController::class, 'markRead'])
+            ->whereNumber('id')
+            ->middleware('throttle:chat-mark-read');
+        Route::post('pusher/auth', [ChatPusherAuthController::class, 'auth'])
+            ->middleware('throttle:pusher-auth');
 
         // Phase 18 — Profile / Auth / Devices
         Route::put('profile/phone-number/initiate', [ProfileController::class, 'initiatePhoneChange']);
@@ -362,18 +426,31 @@ Route::prefix('v1')->group(function () {
         // Wallet & Credits (Phase 10) + Top-up Payment Integration (Phase 11)
         Route::prefix('wallet')->group(function () {
             Route::get('/', [WalletController::class, 'index']);
+            Route::get('account', [WalletController::class, 'account']);
+            Route::get('settings', [WalletController::class, 'getSettings']);
+            Route::put('settings', [WalletController::class, 'updateSettings']);
             Route::get('transactions', [WalletController::class, 'transactions']);
-            Route::post('transfer', [WalletController::class, 'transfer']);
-            Route::post('redeem', [WalletController::class, 'redeem']);
+            Route::post('pay-booking', [WalletController::class, 'payBooking'])
+                ->middleware('throttle:payments');
+            Route::post('transfer', [WalletController::class, 'transfer'])
+                ->middleware('throttle:payments');
+            Route::post('redeem', [WalletController::class, 'redeem'])
+                ->middleware('throttle:default-mutations');
             Route::get('expiring', [WalletController::class, 'expiring']);
-            Route::post('withdraw', [WalletController::class, 'withdraw']);
+            Route::post('withdraw', [WalletController::class, 'withdraw'])
+                ->middleware('throttle:payments');
 
             // Top-up flow (Phase 11)
-            Route::post('topup', [WalletController::class, 'topup']);
-            Route::post('topup/verify', [WalletController::class, 'verifyTopup']);
-            Route::post('topup/resend-otp', [WalletController::class, 'resendTopupOtp']);
+            Route::post('topup', [WalletController::class, 'topup'])
+                ->middleware('throttle:payments');
+            Route::post('topup/verify', [WalletController::class, 'verifyTopup'])
+                ->middleware('throttle:payments');
+            Route::post('topup/resend-otp', [WalletController::class, 'resendTopupOtp'])
+                ->middleware('throttle:default-mutations');
             Route::get('topup/status/{paymentId}', [WalletController::class, 'topupStatus'])->whereNumber('paymentId');
-            Route::post('topup/cancel/{paymentId}', [WalletController::class, 'cancelTopup'])->whereNumber('paymentId');
+            Route::post('topup/cancel/{paymentId}', [WalletController::class, 'cancelTopup'])
+                ->whereNumber('paymentId')
+                ->middleware('throttle:default-mutations');
         });
     });
 
@@ -616,8 +693,12 @@ Route::prefix('club/v1')->middleware(['auth:sanctum'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::prefix('webhooks')->group(function () {
-    Route::post('mtn/callback', [MtnWebhookController::class, 'callback'])->name('webhooks.mtn.callback');
-    Route::post('syriatel/callback', [SyriatelWebhookController::class, 'callback'])->name('webhooks.syriatel.callback');
+    Route::post('mtn/callback', [MtnWebhookController::class, 'callback'])
+        ->middleware('verify.webhook:mtn')
+        ->name('webhooks.mtn.callback');
+    Route::post('syriatel/callback', [SyriatelWebhookController::class, 'callback'])
+        ->middleware('verify.webhook:syriatel')
+        ->name('webhooks.syriatel.callback');
     Route::post('fatora/callback', [FatoraWebhookController::class, 'callback'])->name('webhooks.fatora.callback');
     Route::post('bank/callback', [FatoraWebhookController::class, 'callback'])->name('webhooks.bank.callback');
     // Phase 11 — unified bank callback for both booking + wallet top-up
