@@ -44,6 +44,13 @@ Route::get('/contact', [ContactController::class, 'show'])->name('contact');
 Route::post('/contact', [ContactController::class, 'submit'])->name('contact.submit');
 Route::get('/for-venues', [ForVenuesController::class, 'index'])->name('for-venues');
 
+/* Design Variations */
+Route::get('/v/bold', fn () => view('marketing.variations.bold'))->name('v.bold');
+Route::get('/v/editorial', fn () => view('marketing.variations.editorial'))->name('v.editorial');
+Route::get('/v/minimal', fn () => view('marketing.variations.minimal'))->name('v.minimal');
+Route::get('/v/stadium', fn () => view('marketing.variations.stadium'))->name('v.stadium');
+Route::get('/v', fn () => view('marketing.variations.selector'))->name('v.selector');
+
 Route::post('/locale', function (Request $request) {
     $locale = $request->input('locale', 'ar');
     if (! in_array($locale, ['ar', 'en'])) {
