@@ -1,0 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+    /* Brand palette — from landing-shared.jsx YH object */
+    --yh-green: #0BA84A;
+    --yh-green-deep: #067A36;
+    --yh-green-soft: #D9F5E3;
+    --yh-green-glow: #22D26A;
+    --yh-ink: #0F1A14;
+    --yh-navy: #0A1A2F;
+    --yh-navy-deep: #050E1C;
+    --yh-cream: #F6FBF5;
+    --yh-white: #FFFFFF;
+    --yh-amber: #FFB800;
+    --yh-coral: #FF6B5B;
+
+    /* Typography */
+    --yh-font-ar: "Cairo", "Tajawal", "Noto Kufi Arabic", system-ui, sans-serif;
+    --yh-font-ar-display: "Cairo", "Tajawal", system-ui, sans-serif;
+    --yh-font-en: "Outfit", "Inter", system-ui, sans-serif;
+    --yh-font-en-display: "Space Grotesk", "Outfit", system-ui, sans-serif;
+    --yh-font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+*::before, *::after { box-sizing: border-box; }
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    font-family: var(--yh-font-ar);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+img, svg { display: block; max-width: 100%; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+a { text-decoration: none; color: inherit; }
+::selection { background: var(--yh-green); color: var(--yh-white); }
+
+/* Utility classes */
+.yh-flex { display: flex; }
+.yh-grid { display: grid; }
+.yh-inline-flex { display: inline-flex; }
+.yh-relative { position: relative; }
+.yh-absolute { position: absolute; }
+.yh-items-center { align-items: center; }
+.yh-justify-center { justify-content: center; }
+.yh-items-start { align-items: flex-start; }
+.yh-gap-0 { gap: 0; }
+.yh-gap-2 { gap: 2px; }
+.yh-gap-4 { gap: 4px; }
+.yh-gap-8 { gap: 8px; }
+.yh-gap-12 { gap: 12px; }
+.yh-gap-14 { gap: 14px; }
+.yh-gap-16 { gap: 16px; }
+.yh-gap-20 { gap: 20px; }
+.yh-gap-24 { gap: 24px; }
+.yh-gap-32 { gap: 32px; }
+.yh-gap-48 { gap: 48px; }
+.yh-gap-64 { gap: 64px; }
+
+.yh-text-center { text-align: center; }
+.yh-text-right { text-align: right; }
+.yh-text-left { text-align: left; }
+
+.yh-overflow-hidden { overflow: hidden; }
+.yh-block { display: block; }
+
+.yh-w-full { width: 100%; }
+.yh-h-full { height: 100%; }
+
+.yh-color-white { color: var(--yh-white); }
+.yh-color-cream { color: var(--yh-cream); }
+.yh-color-ink { color: var(--yh-ink); }
+.yh-color-green { color: var(--yh-green); }
+
+.yh-bg-white { background: var(--yh-white); }
+.yh-bg-cream { background: var(--yh-cream); }
+.yh-bg-ink { background: var(--yh-ink); }
+.yh-bg-green { background: var(--yh-green); }
+.yh-bg-navy { background: var(--yh-navy); }
+
+.yh-font-ar { font-family: var(--yh-font-ar); }
+.yh-font-ar-display { font-family: var(--yh-font-ar-display); }
+.yh-font-en { font-family: var(--yh-font-en); }
+.yh-font-en-display { font-family: var(--yh-font-en-display); }
+.yh-font-mono { font-family: var(--yh-font-mono); }
