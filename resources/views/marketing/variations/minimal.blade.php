@@ -248,7 +248,7 @@ $C = __('marketing');
           <a href="#" class="v3-footer-link">{{ $link }}</a>
         @endforeach
       </div>
-      <div class="v3-footer-copyright">{{ $C['footer']['copyright'] }}</div>
+      <div class="v3-footer-copyright">{{ $C['footer_copyright'] }}</div>
     </div>
   </footer>
 </div>
