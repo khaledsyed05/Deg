@@ -376,6 +376,30 @@
     line-height: 1.6;
 }
 
+.v1-section-kicker-dark {
+    font-family: var(--yh-font-mono);
+    font-size: 13px;
+    color: var(--yh-green);
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+}
+
+.v1-section-title-dark {
+    font-size: 64px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -2px;
+    margin: 0 0 16px 0;
+    color: var(--yh-white);
+}
+
+.v1-section-sub-dark {
+    font-size: 18px;
+    opacity: 0.75;
+    line-height: 1.6;
+    color: var(--yh-white);
+}
+
 .v1-features-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
