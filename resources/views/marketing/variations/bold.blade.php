@@ -24,10 +24,7 @@ $C = __('marketing');
   <section class="v1-hero">
     <div class="v1-hero-content">
       {{-- Hero tag --}}
-      <div class="v1-hero-tag">
-        <span class="v1-hero-tag-dot"></span>
-        {{ $C['hero_tag'] }}
-      </div>
+      <div class="v1-hero-tag">{{ $C['hero_tag'] }}</div>
 
       {{-- Hero title --}}
       <h1 class="v1-hero-title">
