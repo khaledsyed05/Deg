@@ -40,7 +40,7 @@ $C = __('marketing');
           <span class="v4-hero-title-light">والملعب لك.</span>
         </h1>
 
-        <p class="v4-hero-sub">{{ $C['heroSub'] }}</p>
+        <p class="v4-hero-sub">{{ $C['hero_sub'] }}</p>
 
         <div class="v4-hero-ctas">
           <button class="v4-hero-btn-primary">{{ $C['cta1'] }} ↓</button>

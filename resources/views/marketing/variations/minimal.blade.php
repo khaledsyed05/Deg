@@ -26,7 +26,7 @@ $C = __('marketing');
   <section class="v3-hero">
     <div class="v3-hero-tag">
       <span class="v3-hero-tag-dot"></span>
-      {{ $C['heroTag'] }}
+      {{ $C['hero_tag'] }}
     </div>
 
     <h1 class="v3-hero-title">
@@ -34,7 +34,7 @@ $C = __('marketing');
       <em>بضغطة وحدة.</em>
     </h1>
 
-    <p class="v3-hero-sub">{{ $C['heroSub'] }}</p>
+    <p class="v3-hero-sub">{{ $C['hero_sub'] }}</p>
 
     <div class="v3-hero-ctas">
       <button class="v3-hero-btn-primary">{{ $C['cta1'] }} ↓</button>
