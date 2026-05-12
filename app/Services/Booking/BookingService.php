@@ -51,7 +51,14 @@ class BookingService
 
             // 3. Calculate commission
             $commissionConfig = $this->commissionService->resolveConfig($venueId);
-            $venuePrice = (int) $data['venue_price'];
+            $venuePrice = (int) ($data['venue_price'] ?? 0);
+
+            if ($venuePrice <= 0) {
+                throw new RuntimeException(
+                    "Venue {$venueId} has no pricing configured (venue_price missing or zero)."
+                );
+            }
+
             $paymentMode = $data['payment_mode'] ?? 'full';
 
             if ($paymentMode === 'deposit') {

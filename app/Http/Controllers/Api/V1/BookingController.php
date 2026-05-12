@@ -106,10 +106,20 @@ class BookingController extends Controller
      */
     public function store(CreateBookingRequest $request): JsonResponse
     {
+        $validated = $request->validated();
+
+        $pricing = $this->pricingService->calculate(
+            venueId: (int) $validated['venue_id'],
+            durationMinutes: (int) $validated['duration_minutes'],
+            promoCode: $validated['promo_code'] ?? null,
+        );
+
         $result = $this->bookingService->create(
             userId: $request->user()->id,
-            venueId: $request->venue_id,
-            data: $request->validated(),
+            venueId: (int) $validated['venue_id'],
+            data: array_merge($validated, [
+                'venue_price' => (int) $pricing['subtotal'],
+            ]),
         );
 
         return response()->json([
