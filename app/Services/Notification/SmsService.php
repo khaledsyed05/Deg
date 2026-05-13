@@ -23,14 +23,31 @@ class SmsService
 
     public function send(string $phoneNumber, string $message): bool
     {
-        // TODO: wire to actual SMS provider API
-        $response = Http::withHeaders(['Authorization' => "Bearer {$this->apiKey}"])
-            ->timeout(10)
-            ->post($this->apiUrl, [
-                'to' => $phoneNumber,
-                'from' => $this->senderId,
-                'message' => $message,
+        if ($this->apiUrl === '') {
+            Log::warning('SmsService: skipping send — apiUrl not configured', [
+                'phone' => $phoneNumber,
             ]);
+
+            return false;
+        }
+
+        try {
+            // TODO: wire to actual SMS provider API
+            $response = Http::withHeaders(['Authorization' => "Bearer {$this->apiKey}"])
+                ->timeout(10)
+                ->post($this->apiUrl, [
+                    'to' => $phoneNumber,
+                    'from' => $this->senderId,
+                    'message' => $message,
+                ]);
+        } catch (\Throwable $e) {
+            Log::warning('SmsService: send threw, suppressing', [
+                'phone' => $phoneNumber,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
 
         if (! $response->successful()) {
             Log::warning('SMS send failed', [
