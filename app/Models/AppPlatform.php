@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\EloquentSortable\Sortable;
 use Spatie\EloquentSortable\SortableTrait;
 use Spatie\Translatable\HasTranslations;
@@ -32,6 +33,11 @@ class AppPlatform extends Model implements Sortable
 
     public function environments(): HasMany
     {
-        return $this->hasMany(AppEnvironment::class);
+        return $this->hasMany(AppEnvironment::class, 'platform_id');
+    }
+
+    public function activeEnvironment(): HasOne
+    {
+        return $this->hasOne(AppEnvironment::class, 'platform_id')->where('is_active', true);
     }
 }

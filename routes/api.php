@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\Admin\SystemController;
 use App\Http\Controllers\Api\V1\Admin\TicketController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\App\AppMetadataController;
+use App\Http\Controllers\Api\V1\App\AppStartupController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\CategoryController;
@@ -137,6 +138,9 @@ Route::prefix('v1')->group(function () {
         Route::get('maintenance', [AppMetadataController::class, 'maintenance']);
         Route::get('config', [AppMetadataController::class, 'config']);
         Route::get('health', [AppMetadataController::class, 'health']);
+
+        // LD-029 — single startup aggregator: base URL + version verdict + maintenance
+        Route::post('startup', AppStartupController::class)->name('app.startup');
     });
 
     // Phase 16 — Clubs (public)
