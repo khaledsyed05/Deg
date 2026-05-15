@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AnalyticsController as AdminAnalyticsController;
+use App\Http\Controllers\Admin\AppStartupController as AdminAppStartupController;
 use App\Http\Controllers\Admin\Auth\AdminLoginController;
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Admin\ClubController as AdminClubController;
@@ -27,11 +28,11 @@ use App\Http\Controllers\Club\SettingController as ClubSettingController;
 use App\Http\Controllers\Club\SettlementController as ClubSettlementController;
 use App\Http\Controllers\Club\VenueAvailabilityController as ClubVenueAvailabilityController;
 use App\Http\Controllers\Club\VenueController as ClubVenueController;
-use App\Http\Controllers\Marketing\HomeController;
 use App\Http\Controllers\Marketing\AboutController;
-use App\Http\Controllers\Marketing\LegalController;
 use App\Http\Controllers\Marketing\ContactController;
 use App\Http\Controllers\Marketing\ForVenuesController;
+use App\Http\Controllers\Marketing\HomeController;
+use App\Http\Controllers\Marketing\LegalController;
 use Dedoc\Scramble\Scramble;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -148,6 +149,17 @@ Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
         Route::get('system', [AdminSettingsController::class, 'index'])->name('system');
         Route::put('system', [AdminSettingsController::class, 'update'])->name('system.update');
         Route::post('system/maintenance-mode', [AdminSettingsController::class, 'toggleMaintenanceMode'])->name('system.maintenance-mode');
+
+        // LD-029 — App Startup config (mobile base URL + version policy + maintenance)
+        Route::prefix('app-startup')->name('app-startup.')->group(function () {
+            Route::get('/', [AdminAppStartupController::class, 'index'])->name('index');
+            Route::put('platforms/{platform}', [AdminAppStartupController::class, 'updatePlatform'])->name('platforms.update');
+            Route::post('environments', [AdminAppStartupController::class, 'storeEnvironment'])->name('environments.store');
+            Route::put('environments/{environment}', [AdminAppStartupController::class, 'updateEnvironment'])->name('environments.update');
+            Route::post('environments/{environment}/activate', [AdminAppStartupController::class, 'activateEnvironment'])->name('environments.activate');
+            Route::delete('environments/{environment}', [AdminAppStartupController::class, 'destroyEnvironment'])->name('environments.destroy');
+            Route::put('maintenance', [AdminAppStartupController::class, 'updateMaintenance'])->name('maintenance.update');
+        });
     });
 
     Route::prefix('analytics')->name('analytics.')->group(function () {

@@ -116,6 +116,7 @@ const navItems = computed(() => {
     { href: '/admin/analytics/players', label: tr.playersAnalyticsTitle, icon: NAV_ICONS.users },
     { href: '/admin/settings/commissions', label: tr.commissionsTitle, icon: NAV_ICONS.money },
     { href: '/admin/settings/system', label: tr.settingsTitle, icon: NAV_ICONS.cog },
+    { href: '/admin/settings/app-startup', label: tr.appStartupNav, icon: NAV_ICONS.cog },
     { href: '/admin/bookings/calendar', label: tr.bookingCalendarView, icon: NAV_ICONS.calendar },
     { href: '/admin/players', label: tr.players, icon: NAV_ICONS.user },
     { href: '/admin/whatsapp/platform', label: tr.platformWhatsappNav, icon: NAV_ICONS.chat },
