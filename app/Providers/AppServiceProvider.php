@@ -62,6 +62,7 @@ use App\Repositories\Eloquent\VenueWaitlistRepository;
 use App\Repositories\Eloquent\WalletRepository;
 use App\Repositories\Eloquent\WalletTransactionRepository;
 use App\Services\Auth\FirebaseAuthService;
+use App\Services\Football\ApnsLiveActivityPusher;
 use App\Services\Notification\BaileysService;
 use App\Services\Notification\FcmService;
 use App\Services\Notification\SmsService;
@@ -103,6 +104,15 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(FirebaseAuthService::class, fn () => new FirebaseAuthService(
             projectId: (string) config('services.firebase.project_id', ''),
+        ));
+
+        $this->app->singleton(ApnsLiveActivityPusher::class, fn () => new ApnsLiveActivityPusher(
+            enabled: (bool) config('services.apns.enabled', false),
+            useSandbox: (bool) config('services.apns.use_sandbox', false),
+            authKeyPath: config('services.apns.auth_key_path'),
+            keyId: config('services.apns.key_id'),
+            teamId: config('services.apns.team_id'),
+            bundleId: (string) config('services.apns.bundle_id', 'com.example.degEhjizli'),
         ));
 
         $this->app->singleton(Pusher::class, function () {

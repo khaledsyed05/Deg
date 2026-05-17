@@ -74,4 +74,13 @@ return [
         'verify_signatures' => env('PAYMENT_VERIFY_SIGNATURES', false),
     ],
 
+    'apns' => [
+        'enabled' => env('APNS_ENABLED', false),
+        'use_sandbox' => env('APNS_USE_SANDBOX', false),
+        'auth_key_path' => env('APNS_AUTH_KEY_PATH'),
+        'key_id' => env('APNS_KEY_ID'),
+        'team_id' => env('APNS_TEAM_ID'),
+        'bundle_id' => env('APNS_BUNDLE_ID', 'com.example.degEhjizli'),
+    ],
+
 ];

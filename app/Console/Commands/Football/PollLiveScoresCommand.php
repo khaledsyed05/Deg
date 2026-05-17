@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands\Football;
 
+use App\Jobs\Football\BroadcastMatchActivityJob;
 use App\Models\Football\LiveMatchState;
 use App\Models\User;
 use App\Notifications\Football\GoalScoredNotification;
@@ -76,6 +77,8 @@ class PollLiveScoresCommand extends Command
 
         $homeGoals = (int) ($match['score']['home'] ?? 0) - (int) $previousState->home_score;
         $awayGoals = (int) ($match['score']['away'] ?? 0) - (int) $previousState->away_score;
+        $newStatus = (string) ($match['status_short'] ?? '');
+        $statusChanged = $newStatus !== '' && $newStatus !== (string) $previousState->status;
 
         if ($homeGoals > 0) {
             $this->dispatchGoalNotification($match, 'home', $homeGoals);
@@ -85,12 +88,35 @@ class PollLiveScoresCommand extends Command
         }
 
         $finishedStatuses = ['FT', 'AET', 'PEN'];
-        if (in_array($match['status_short'] ?? '', $finishedStatuses, true)
+        if (in_array($newStatus, $finishedStatuses, true)
             && ! in_array($previousState->status, $finishedStatuses, true)) {
             $this->dispatchResultNotification($match);
         }
 
+        if ($homeGoals > 0 || $awayGoals > 0 || $statusChanged) {
+            $this->dispatchActivityBroadcast($match);
+        }
+
         $this->saveState($match);
+    }
+
+    /**
+     * @param  array<string,mixed>  $match
+     */
+    private function dispatchActivityBroadcast(array $match): void
+    {
+        BroadcastMatchActivityJob::dispatch(
+            (string) ($match['fixture_id'] ?? ''),
+            [
+                'home_score' => (int) ($match['score']['home'] ?? 0),
+                'away_score' => (int) ($match['score']['away'] ?? 0),
+                'status_short' => (string) ($match['status_short'] ?? ''),
+                'minute' => (int) ($match['minute'] ?? 0),
+                'home_team_name' => (string) ($match['home_team']['name'] ?? ''),
+                'away_team_name' => (string) ($match['away_team']['name'] ?? ''),
+                'league_name' => (string) ($match['league']['name'] ?? ''),
+            ],
+        );
     }
 
     private function dispatchGoalNotification(array $match, string $side, int $goals): void
