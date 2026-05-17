@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\V1\Football\FavoriteTeamsController;
 use App\Http\Controllers\Api\V1\Football\FollowedLeaguesController;
 use App\Http\Controllers\Api\V1\Football\LeaguesController;
 use App\Http\Controllers\Api\V1\Football\LiveScoreController;
+use App\Http\Controllers\Api\V1\Football\MatchActivityTokensController;
 use App\Http\Controllers\Api\V1\Football\MatchesController;
 use App\Http\Controllers\Api\V1\Football\NotificationSettingsController;
 use App\Http\Controllers\Api\V1\Football\TeamsController;
@@ -529,6 +530,12 @@ Route::prefix('v1')->group(function () {
                 Route::put('results', [NotificationSettingsController::class, 'updateResults']);
                 Route::put('quiet-hours', [NotificationSettingsController::class, 'updateQuietHours']);
             });
+
+            // Live Activity push tokens (per-fixture opt-in for iOS Live Activities + Android Live Updates)
+            Route::post('matches/{fixtureId}/activity-token', [MatchActivityTokensController::class, 'store'])
+                ->whereNumber('fixtureId');
+            Route::delete('matches/{fixtureId}/activity-token', [MatchActivityTokensController::class, 'destroy'])
+                ->whereNumber('fixtureId');
         });
     });
 });
